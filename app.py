@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 import plotly.express as px
 
 # =========================
@@ -21,7 +22,20 @@ def load_data():
     df = pd.read_csv("project3_analysis_data.csv")
     return df
 
+@st.cache_data
+def load_forecast_data():
+    try:
+        forecast_df = pd.read_csv("fas_forecast_data.csv")
+        forecast_df["year"] = pd.to_numeric(forecast_df["year"], errors="coerce")
+        forecast_df["value"] = pd.to_numeric(forecast_df["value"], errors="coerce")
+        forecast_df = forecast_df.dropna(subset=["year", "value"]).copy()
+        forecast_df["year"] = forecast_df["year"].astype(int)
+        return forecast_df
+    except FileNotFoundError:
+        return pd.DataFrame()
+
 df = load_data()
+forecast_df = load_forecast_data()
 
 # =========================
 # Helper lists
@@ -325,10 +339,188 @@ else:
     st.info("Cross-SDG comparison requires both education and financial indicators.")
 
 # =========================
+# Predictive outlook
+# =========================
+
+st.header("6. Predictive Outlook")
+
+st.markdown(
+    """
+    This section uses historical IMF Financial Access Survey data to create a simple
+    regression-based projection for selected financial access indicators.
+    """
+)
+
+if forecast_df.empty:
+    st.info(
+        "Forecast data is not available yet. Please upload fas_forecast_data.csv to enable this section."
+    )
+else:
+    forecast_countries = sorted(forecast_df["REF_AREA_LABEL"].dropna().unique().tolist())
+    forecast_indicators = sorted(forecast_df["short_indicator"].dropna().unique().tolist())
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        forecast_country = st.selectbox(
+            "Select a country/economy for projection",
+            forecast_countries,
+            key="forecast_country"
+        )
+
+    with col2:
+        forecast_indicator = st.selectbox(
+            "Select a financial access indicator for projection",
+            forecast_indicators,
+            format_func=pretty_name,
+            key="forecast_indicator"
+        )
+
+    model_data = forecast_df[
+        forecast_df["short_indicator"] == forecast_indicator
+    ].copy()
+
+    selected_hist = model_data[
+        model_data["REF_AREA_LABEL"] == forecast_country
+    ].sort_values("year").copy()
+
+    if selected_hist.shape[0] < 3:
+        st.warning(
+            "Not enough historical observations for the selected country and indicator."
+        )
+    else:
+        # Use a pooled regression with country fixed effects:
+        # value = intercept + year trend + country baseline adjustment
+        # This uses all selected countries' historical data for the same indicator.
+        model_data = model_data.dropna(subset=["REF_AREA_LABEL", "year", "value"]).copy()
+        model_data["year_centered"] = model_data["year"] - model_data["year"].min()
+
+        country_dummies = pd.get_dummies(
+            model_data["REF_AREA_LABEL"],
+            prefix="country",
+            drop_first=True,
+            dtype=float
+        )
+
+        X = pd.concat(
+            [
+                pd.Series(1.0, index=model_data.index, name="intercept"),
+                model_data[["year_centered"]],
+                country_dummies
+            ],
+            axis=1
+        )
+
+        y = model_data["value"].astype(float)
+
+        coef = np.linalg.lstsq(X.values, y.values, rcond=None)[0]
+        model_data["predicted"] = X.values @ coef
+
+        # Model fit, used only as a rough diagnostic
+        ss_res = ((model_data["value"] - model_data["predicted"]) ** 2).sum()
+        ss_tot = ((model_data["value"] - model_data["value"].mean()) ** 2).sum()
+        r_squared = np.nan if ss_tot == 0 else 1 - ss_res / ss_tot
+
+        last_year = int(selected_hist["year"].max())
+        future_years = list(range(last_year + 1, last_year + 6))
+
+        future_df = pd.DataFrame({
+            "REF_AREA_LABEL": forecast_country,
+            "year": future_years
+        })
+
+        future_df["year_centered"] = future_df["year"] - model_data["year"].min()
+
+        # Build future design matrix with same columns as training X
+        X_future = pd.DataFrame(0.0, index=future_df.index, columns=X.columns)
+        X_future["intercept"] = 1.0
+        X_future["year_centered"] = future_df["year_centered"]
+
+        country_col_name = f"country_{forecast_country}"
+        if country_col_name in X_future.columns:
+            X_future[country_col_name] = 1.0
+
+        future_df["value"] = X_future.values @ coef
+        future_df["value"] = future_df["value"].clip(lower=0)
+
+        # Prepare plot data
+        actual_plot = selected_hist[["year", "value"]].copy()
+        actual_plot["series"] = "Historical"
+
+        last_actual = selected_hist[["year", "value"]].tail(1).copy()
+        last_actual["series"] = "Projected"
+
+        projected_plot = future_df[["year", "value"]].copy()
+        projected_plot["series"] = "Projected"
+
+        plot_df = pd.concat(
+            [actual_plot, last_actual, projected_plot],
+            ignore_index=True
+        )
+
+        fig = px.line(
+            plot_df,
+            x="year",
+            y="value",
+            color="series",
+            markers=True,
+            title=f"{pretty_name(forecast_indicator)}: Historical Trend and 5-Year Projection",
+            labels={
+                "year": "Year",
+                "value": pretty_name(forecast_indicator),
+                "series": "Series"
+            }
+        )
+
+        st.plotly_chart(fig, use_container_width=True)
+
+        metric1, metric2, metric3 = st.columns(3)
+
+        current_value = selected_hist["value"].iloc[-1]
+        projected_value = future_df["value"].iloc[-1]
+        projected_change = projected_value - current_value
+
+        metric1.metric(
+            "Latest historical value",
+            f"{current_value:.1f}"
+        )
+
+        metric2.metric(
+            "Projected value in 5 years",
+            f"{projected_value:.1f}"
+        )
+
+        metric3.metric(
+            "Projected change",
+            f"{projected_change:+.1f}"
+        )
+
+        st.write(f"Model R-squared: **{r_squared:.2f}**")
+
+        st.dataframe(
+            pd.concat(
+                [
+                    selected_hist[["REF_AREA_LABEL", "short_indicator", "year", "value"]],
+                    future_df.assign(short_indicator=forecast_indicator)[
+                        ["REF_AREA_LABEL", "short_indicator", "year", "value"]
+                    ]
+                ],
+                ignore_index=True
+            ),
+            use_container_width=True
+        )
+
+        st.caption(
+            "This projection uses a simple pooled regression model with a year trend and country-level baseline differences. "
+            "It is intended as an exploratory scenario, not a precise forecast. Results should be interpreted carefully, "
+            "especially because the number of countries and historical observations is limited."
+        )
+
+# =========================
 # Data table
 # =========================
 
-st.header("6. Final Analysis Data")
+st.header("7. Final Analysis Data")
 
 with st.expander("Show final dataset"):
     st.dataframe(df, use_container_width=True)
@@ -337,7 +529,7 @@ with st.expander("Show final dataset"):
 # Data notes
 # =========================
 
-st.header("7. Data Notes")
+st.header("8. Data Notes")
 
 st.markdown(
     """
