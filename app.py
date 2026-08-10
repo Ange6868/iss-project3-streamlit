@@ -54,7 +54,7 @@ country_color_map = {
     "Korea, Rep.": "#F6C85F",
     "Hong Kong SAR, China": "#F4A261",
     "Thailand": "#E76F51",
-    "Indonesia": "#C65D21"
+    "Indonesia": "#db6826"
 }
 
 score_cols = [
