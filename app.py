@@ -423,39 +423,58 @@ else:
         future_df["value"] = future_df["value"].clip(lower=0)
 
         # Prepare plot data
+        # Historical = actual historical values
+        # Projected = starts from the latest actual value and extends 5 years forward
+        
         actual_plot = selected_hist[["year", "value"]].copy()
         actual_plot["series"] = "Historical"
-
-        trend_plot = selected_hist[["year", "fitted_trend"]].rename(
-            columns={"fitted_trend": "value"}
-        )
-        trend_plot["series"] = "Historical fitted trend"
-
+        
         last_actual = selected_hist[["year", "value"]].tail(1).copy()
         last_actual["series"] = "Projected"
-
+        
         projected_plot = future_df[["year", "value"]].copy()
         projected_plot["series"] = "Projected"
-
+        
         plot_df = pd.concat(
-            [actual_plot, trend_plot, last_actual, projected_plot],
+            [actual_plot, last_actual, projected_plot],
             ignore_index=True
         )
-
+        
         fig = px.line(
             plot_df,
             x="year",
             y="value",
             color="series",
+            line_dash="series",
             markers=True,
             title=f"{pretty_name(forecast_indicator)}: Historical Trend and 5-Year Projection",
             labels={
                 "year": "Year",
                 "value": pretty_name(forecast_indicator),
                 "series": "Series"
+            },
+            color_discrete_map={
+                "Historical": "#0B5CAD",
+                "Projected": "#7CC7FF"
+            },
+            line_dash_map={
+                "Historical": "solid",
+                "Projected": "dash"
+            },
+            category_orders={
+                "series": ["Historical", "Projected"]
             }
         )
-
+        
+        fig.update_traces(
+            marker=dict(size=7),
+            line=dict(width=3)
+        )
+        
+        fig.update_layout(
+            legend_title_text="Series"
+        )
+        
         st.plotly_chart(fig, use_container_width=True)
 
         metric1, metric2, metric3, metric4 = st.columns(4)
