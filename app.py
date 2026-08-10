@@ -347,7 +347,7 @@ st.header("6. Predictive Outlook")
 st.markdown(
     """
     This section uses historical IMF Financial Access Survey data to create a simple
-    regression-based projection for selected financial access indicators.
+    country-specific projection for selected financial access indicators.
     """
 )
 
@@ -376,76 +376,60 @@ else:
             key="forecast_indicator"
         )
 
-    model_data = forecast_df[
-        forecast_df["short_indicator"] == forecast_indicator
-    ].copy()
-
-    selected_hist = model_data[
-        model_data["REF_AREA_LABEL"] == forecast_country
+    selected_hist = forecast_df[
+        (forecast_df["REF_AREA_LABEL"] == forecast_country) &
+        (forecast_df["short_indicator"] == forecast_indicator)
     ].sort_values("year").copy()
 
-    if selected_hist.shape[0] < 3:
+    selected_hist = selected_hist.dropna(subset=["year", "value"]).copy()
+
+    if selected_hist.shape[0] < 4:
         st.warning(
             "Not enough historical observations for the selected country and indicator."
         )
     else:
-        # Use a pooled regression with country fixed effects:
-        # value = intercept + year trend + country baseline adjustment
-        # This uses all selected countries' historical data for the same indicator.
-        model_data = model_data.dropna(subset=["REF_AREA_LABEL", "year", "value"]).copy()
-        model_data["year_centered"] = model_data["year"] - model_data["year"].min()
+        # Use a simple country-specific linear trend.
+        # To avoid unrealistic jumps, the future projection is anchored at the latest actual value.
+        x = selected_hist["year"].astype(float).values
+        y = selected_hist["value"].astype(float).values
 
-        country_dummies = pd.get_dummies(
-            model_data["REF_AREA_LABEL"],
-            prefix="country",
-            drop_first=True,
-            dtype=float
-        )
+        slope, intercept = np.polyfit(x, y, 1)
 
-        X = pd.concat(
-            [
-                pd.Series(1.0, index=model_data.index, name="intercept"),
-                model_data[["year_centered"]],
-                country_dummies
-            ],
-            axis=1
-        )
+        selected_hist["fitted_trend"] = intercept + slope * selected_hist["year"]
 
-        y = model_data["value"].astype(float)
-
-        coef = np.linalg.lstsq(X.values, y.values, rcond=None)[0]
-        model_data["predicted"] = X.values @ coef
-
-        # Model fit, used only as a rough diagnostic
-        ss_res = ((model_data["value"] - model_data["predicted"]) ** 2).sum()
-        ss_tot = ((model_data["value"] - model_data["value"].mean()) ** 2).sum()
+        # R-squared for historical fit
+        ss_res = ((selected_hist["value"] - selected_hist["fitted_trend"]) ** 2).sum()
+        ss_tot = ((selected_hist["value"] - selected_hist["value"].mean()) ** 2).sum()
         r_squared = np.nan if ss_tot == 0 else 1 - ss_res / ss_tot
 
         last_year = int(selected_hist["year"].max())
+        last_value = float(selected_hist["value"].iloc[-1])
+
         future_years = list(range(last_year + 1, last_year + 6))
 
         future_df = pd.DataFrame({
             "REF_AREA_LABEL": forecast_country,
+            "short_indicator": forecast_indicator,
             "year": future_years
         })
 
-        future_df["year_centered"] = future_df["year"] - model_data["year"].min()
+        # Anchored projection:
+        # future value = latest actual value + estimated annual trend * years ahead
+        future_df["value"] = [
+            last_value + slope * (year - last_year)
+            for year in future_years
+        ]
 
-        # Build future design matrix with same columns as training X
-        X_future = pd.DataFrame(0.0, index=future_df.index, columns=X.columns)
-        X_future["intercept"] = 1.0
-        X_future["year_centered"] = future_df["year_centered"]
-
-        country_col_name = f"country_{forecast_country}"
-        if country_col_name in X_future.columns:
-            X_future[country_col_name] = 1.0
-
-        future_df["value"] = X_future.values @ coef
         future_df["value"] = future_df["value"].clip(lower=0)
 
         # Prepare plot data
         actual_plot = selected_hist[["year", "value"]].copy()
         actual_plot["series"] = "Historical"
+
+        trend_plot = selected_hist[["year", "fitted_trend"]].rename(
+            columns={"fitted_trend": "value"}
+        )
+        trend_plot["series"] = "Historical fitted trend"
 
         last_actual = selected_hist[["year", "value"]].tail(1).copy()
         last_actual["series"] = "Projected"
@@ -454,7 +438,7 @@ else:
         projected_plot["series"] = "Projected"
 
         plot_df = pd.concat(
-            [actual_plot, last_actual, projected_plot],
+            [actual_plot, trend_plot, last_actual, projected_plot],
             ignore_index=True
         )
 
@@ -474,15 +458,14 @@ else:
 
         st.plotly_chart(fig, use_container_width=True)
 
-        metric1, metric2, metric3 = st.columns(3)
+        metric1, metric2, metric3, metric4 = st.columns(4)
 
-        current_value = selected_hist["value"].iloc[-1]
-        projected_value = future_df["value"].iloc[-1]
-        projected_change = projected_value - current_value
+        projected_value = float(future_df["value"].iloc[-1])
+        projected_change = projected_value - last_value
 
         metric1.metric(
             "Latest historical value",
-            f"{current_value:.1f}"
+            f"{last_value:.1f}"
         )
 
         metric2.metric(
@@ -495,25 +478,29 @@ else:
             f"{projected_change:+.1f}"
         )
 
-        st.write(f"Model R-squared: **{r_squared:.2f}**")
+        metric4.metric(
+            "Annual trend",
+            f"{slope:+.2f}"
+        )
+
+        st.write(f"Historical model R-squared: **{r_squared:.2f}**")
+
+        forecast_table = pd.concat(
+            [
+                selected_hist[["REF_AREA_LABEL", "short_indicator", "year", "value"]].assign(type="Historical"),
+                future_df[["REF_AREA_LABEL", "short_indicator", "year", "value"]].assign(type="Projected")
+            ],
+            ignore_index=True
+        )
 
         st.dataframe(
-            pd.concat(
-                [
-                    selected_hist[["REF_AREA_LABEL", "short_indicator", "year", "value"]],
-                    future_df.assign(short_indicator=forecast_indicator)[
-                        ["REF_AREA_LABEL", "short_indicator", "year", "value"]
-                    ]
-                ],
-                ignore_index=True
-            ),
+            forecast_table,
             use_container_width=True
         )
 
         st.caption(
-            "This projection uses a simple pooled regression model with a year trend and country-level baseline differences. "
-            "It is intended as an exploratory scenario, not a precise forecast. Results should be interpreted carefully, "
-            "especially because the number of countries and historical observations is limited."
+            "This projection uses a simple country-specific linear regression trend and anchors the forecast at the latest observed value. "
+            "It is intended as an exploratory scenario, not a precise forecast. Results should be interpreted carefully because the number of historical observations is limited and financial access indicators may be affected by policy, technology, or measurement changes."
         )
 
 # =========================
