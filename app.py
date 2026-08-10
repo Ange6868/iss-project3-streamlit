@@ -43,6 +43,20 @@ forecast_df = load_forecast_data()
 
 country_col = "REF_AREA_LABEL"
 
+country_order = [
+    "Korea, Rep.",
+    "Hong Kong SAR, China",
+    "Thailand",
+    "Indonesia"
+]
+
+country_color_map = {
+    "Korea, Rep.": "#F6C85F",
+    "Hong Kong SAR, China": "#F4A261",
+    "Thailand": "#E76F51",
+    "Indonesia": "#C65D21"
+}
+
 score_cols = [
     col for col in [
         "education_equity_score",
@@ -195,13 +209,18 @@ if "overall_readiness_score" in df.columns:
         ranking_df,
         x=country_col,
         y="overall_readiness_score",
+        color=country_col,
         text="overall_readiness_score",
         title="Overall Readiness Score by Country/Economy",
         labels={
             country_col: "Country/Economy",
             "overall_readiness_score": "Overall Readiness Score"
-        }
+        },
+        color_discrete_map=country_color_map,
+        category_orders={country_col: country_order}
     )
+    
+    fig.update_layout(showlegend=False)
     fig.update_traces(texttemplate="%{text:.1f}", textposition="outside")
     fig.update_layout(yaxis_range=[0, 105])
     st.plotly_chart(fig, use_container_width=True)
@@ -234,13 +253,18 @@ if education_cols:
         df,
         x=country_col,
         y=selected_edu_indicator,
+        color=country_col,
         text=selected_edu_indicator,
         title=pretty_name(selected_edu_indicator),
         labels={
             country_col: "Country/Economy",
             selected_edu_indicator: pretty_name(selected_edu_indicator)
-        }
+        },
+        color_discrete_map=country_color_map,
+        category_orders={country_col: country_order}
     )
+    
+    fig.update_layout(showlegend=False)
     fig.update_traces(texttemplate="%{text:.2f}", textposition="outside")
     st.plotly_chart(fig, use_container_width=True)
 
@@ -269,13 +293,18 @@ if financial_cols:
         df,
         x=country_col,
         y=selected_fin_indicator,
+        color=country_col,
         text=selected_fin_indicator,
         title=pretty_name(selected_fin_indicator),
         labels={
             country_col: "Country/Economy",
             selected_fin_indicator: pretty_name(selected_fin_indicator)
-        }
+        },
+        color_discrete_map=country_color_map,
+        category_orders={country_col: country_order}
     )
+    
+    fig.update_layout(showlegend=False)
     fig.update_traces(texttemplate="%{text:.1f}", textposition="outside")
     st.plotly_chart(fig, use_container_width=True)
 
@@ -313,12 +342,16 @@ if education_cols and financial_cols:
         df,
         x=x_indicator,
         y=y_indicator,
+        color=country_col,
         text=country_col,
         title=f"{pretty_name(x_indicator)} vs. {pretty_name(y_indicator)}",
         labels={
             x_indicator: pretty_name(x_indicator),
-            y_indicator: pretty_name(y_indicator)
-        }
+            y_indicator: pretty_name(y_indicator),
+            country_col: "Country/Economy"
+        },
+        color_discrete_map=country_color_map,
+        category_orders={country_col: country_order}
     )
     fig.update_traces(textposition="top center")
     st.plotly_chart(fig, use_container_width=True)
