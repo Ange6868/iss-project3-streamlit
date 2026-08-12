@@ -164,8 +164,15 @@ def pretty_name(col_name: str) -> str:
 
 def add_country_labels(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
-    df["economy_label"] = df["REF_AREA_LABEL"].map(COUNTRY_LABEL_MAP).fillna(df["REF_AREA_LABEL"])
+    if "REF_AREA_LABEL" in df.columns:
+        df["economy_label"] = df["REF_AREA_LABEL"].map(COUNTRY_LABEL_MAP).fillna(df["REF_AREA_LABEL"])
     return df
+
+
+def format_score(value):
+    if pd.isna(value):
+        return "N/A"
+    return f"{value:.1f}"
 
 
 def ensure_scores(df: pd.DataFrame) -> pd.DataFrame:
@@ -227,11 +234,11 @@ def ensure_scores(df: pd.DataFrame) -> pd.DataFrame:
     if "financial_inclusion_ecosystem_score" in df.columns:
         df["overall_readiness_score"] = df["financial_inclusion_ecosystem_score"]
 
-    if "financial_inclusion_ecosystem_score" in df.columns:
         df = df.sort_values(
             "financial_inclusion_ecosystem_score",
             ascending=False
         ).reset_index(drop=True)
+
         df["rank"] = df.index + 1
 
     df = add_country_labels(df)
@@ -258,19 +265,20 @@ def load_forecast_data() -> pd.DataFrame:
         return pd.DataFrame()
 
     forecast_df = pd.read_csv(FORECAST_PATH)
+
     forecast_df["year"] = pd.to_numeric(forecast_df["year"], errors="coerce")
     forecast_df["value"] = pd.to_numeric(forecast_df["value"], errors="coerce")
+
     forecast_df = forecast_df.dropna(subset=["year", "value"]).copy()
     forecast_df["year"] = forecast_df["year"].astype(int)
+
     forecast_df = add_country_labels(forecast_df)
     return forecast_df
 
 
-def format_score(value):
-    if pd.isna(value):
-        return "N/A"
-    return f"{value:.1f}"
-
+# ============================================================
+# Plot functions
+# ============================================================
 
 def plot_ecosystem_score(df: pd.DataFrame):
     plot_df = df.sort_values("financial_inclusion_ecosystem_score", ascending=False)
@@ -375,7 +383,10 @@ def plot_three_dimension_scatter(df: pd.DataFrame):
             "economy_label": "Economy"
         },
         color_discrete_map=COUNTRY_COLOR_MAP,
-        category_orders={"REF_AREA_LABEL": COUNTRY_ORDER},
+        category_orders={
+            "REF_AREA_LABEL": COUNTRY_ORDER,
+            "economy_label": COUNTRY_LABEL_ORDER
+        },
         hover_name="REF_AREA_LABEL",
         hover_data={
             "economy_label": False,
@@ -453,7 +464,8 @@ st.sidebar.title("Explorer Controls")
 selected_country = st.sidebar.selectbox(
     "Select an economy",
     options=COUNTRY_ORDER,
-    format_func=lambda x: COUNTRY_LABEL_MAP.get(x, x)
+    format_func=lambda x: COUNTRY_LABEL_MAP.get(x, x),
+    key="sidebar_selected_country"
 )
 
 selected_country_row = df[df["REF_AREA_LABEL"] == selected_country].iloc[0]
@@ -527,7 +539,11 @@ into actual financial usage.
 """
     )
 
-    st.plotly_chart(plot_ecosystem_score(df), use_container_width=True)
+    st.plotly_chart(
+        plot_ecosystem_score(df),
+        use_container_width=True,
+        key="overview_ecosystem_score_chart"
+    )
 
     st.markdown(
         """
@@ -604,7 +620,7 @@ with tab_country:
         }
     )
 
-    fig = px.bar(
+    fig_country_profile = px.bar(
         selected_profile,
         x="Dimension",
         y="Score",
@@ -619,14 +635,18 @@ with tab_country:
         category_orders={"Dimension": PILLAR_ORDER}
     )
 
-    fig.update_traces(texttemplate="%{text:.1f}", textposition="outside")
-    fig.update_layout(
+    fig_country_profile.update_traces(texttemplate="%{text:.1f}", textposition="outside")
+    fig_country_profile.update_layout(
         template="plotly_white",
         showlegend=False,
         yaxis_range=[0, 105]
     )
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(
+        fig_country_profile,
+        use_container_width=True,
+        key=f"country_profile_pillar_chart_{selected_country}"
+    )
 
     st.markdown("### Interpretation")
 
@@ -701,7 +721,11 @@ across the selected indicators.
 """
     )
 
-    st.plotly_chart(plot_ecosystem_score(df), use_container_width=True)
+    st.plotly_chart(
+        plot_ecosystem_score(df),
+        use_container_width=True,
+        key="charts_ecosystem_score_chart"
+    )
 
     st.markdown(
         """
@@ -724,7 +748,11 @@ position is driven more by education equity, people-side financial participation
 """
     )
 
-    st.plotly_chart(plot_three_dimension_profile(df), use_container_width=True)
+    st.plotly_chart(
+        plot_three_dimension_profile(df),
+        use_container_width=True,
+        key="charts_three_dimension_profile"
+    )
 
     st.markdown(
         """
@@ -756,7 +784,11 @@ but cannot prove causal conclusions.
 """
     )
 
-    st.plotly_chart(plot_three_dimension_scatter(df), use_container_width=True)
+    st.plotly_chart(
+        plot_three_dimension_scatter(df),
+        use_container_width=True,
+        key="charts_three_dimension_scatter"
+    )
 
     st.markdown(
         """
@@ -798,15 +830,18 @@ and use different units.
             "Formal financial participation indicators",
             "Financial access infrastructure indicators"
         ],
-        horizontal=True
+        horizontal=True,
+        key="indicator_group_selector"
     )
 
     if indicator_group == "Education equity indicators":
         available_cols = [col for col in EDUCATION_RAW_COLS if col in df.columns]
+
         selected_indicator = st.selectbox(
             "Select an education indicator",
             available_cols,
-            format_func=pretty_name
+            format_func=pretty_name,
+            key="education_indicator_selector"
         )
 
         st.info(
@@ -814,14 +849,14 @@ and use different units.
             "mathematics-related outcomes. Values farther from 1 indicate larger inequality in either direction."
         )
 
-        fig = plot_indicator_bar(
+        fig_indicator = plot_indicator_bar(
             df,
             selected_indicator,
             title=pretty_name(selected_indicator),
             y_label="Parity index"
         )
 
-        fig.add_hline(
+        fig_indicator.add_hline(
             y=1,
             line_dash="dash",
             line_color="gray",
@@ -829,14 +864,20 @@ and use different units.
             annotation_position="top left"
         )
 
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(
+            fig_indicator,
+            use_container_width=True,
+            key=f"indicator_chart_education_{selected_indicator}"
+        )
 
     elif indicator_group == "Formal financial participation indicators":
         available_cols = [col for col in FINDEX_RAW_COLS if col in df.columns]
+
         selected_indicator = st.selectbox(
             "Select a Findex participation indicator",
             available_cols,
-            format_func=pretty_name
+            format_func=pretty_name,
+            key="findex_indicator_selector"
         )
 
         st.info(
@@ -844,22 +885,29 @@ and use different units.
             "They show whether adults are actually using formal financial tools."
         )
 
-        fig = plot_indicator_bar(
+        fig_indicator = plot_indicator_bar(
             df,
             selected_indicator,
             title=pretty_name(selected_indicator),
             y_label="Percentage of adults"
         )
 
-        fig.update_layout(yaxis_range=[0, 105])
-        st.plotly_chart(fig, use_container_width=True)
+        fig_indicator.update_layout(yaxis_range=[0, 105])
+
+        st.plotly_chart(
+            fig_indicator,
+            use_container_width=True,
+            key=f"indicator_chart_findex_{selected_indicator}"
+        )
 
     else:
         available_cols = [col for col in FAS_RAW_COLS if col in df.columns]
+
         selected_indicator = st.selectbox(
             "Select a FAS infrastructure indicator",
             available_cols,
-            format_func=pretty_name
+            format_func=pretty_name,
+            key="fas_indicator_selector"
         )
 
         st.info(
@@ -868,14 +916,18 @@ and use different units.
             "and access points are available."
         )
 
-        fig = plot_indicator_bar(
+        fig_indicator = plot_indicator_bar(
             df,
             selected_indicator,
             title=pretty_name(selected_indicator),
             y_label=pretty_name(selected_indicator)
         )
 
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(
+            fig_indicator,
+            use_container_width=True,
+            key=f"indicator_chart_fas_{selected_indicator}"
+        )
 
     st.markdown("### Indicator data")
 
@@ -918,13 +970,21 @@ historical trends continue.
             "to enable the predictive outlook section."
         )
     else:
+        available_forecast_countries = [
+            country for country in COUNTRY_ORDER
+            if country in forecast_df["REF_AREA_LABEL"].unique()
+        ]
+
         forecast_country = st.selectbox(
             "Select economy for prediction",
-            options=[country for country in COUNTRY_ORDER if country in forecast_df["REF_AREA_LABEL"].unique()],
-            format_func=lambda x: COUNTRY_LABEL_MAP.get(x, x)
+            options=available_forecast_countries,
+            format_func=lambda x: COUNTRY_LABEL_MAP.get(x, x),
+            key="forecast_country_selector"
         )
 
-        country_forecast_df = forecast_df[forecast_df["REF_AREA_LABEL"] == forecast_country].copy()
+        country_forecast_df = forecast_df[
+            forecast_df["REF_AREA_LABEL"] == forecast_country
+        ].copy()
 
         indicator_options = (
             country_forecast_df[["short_indicator", "indicator_label"]]
@@ -938,7 +998,8 @@ historical trends continue.
 
         selected_indicator_label = st.selectbox(
             "Select infrastructure indicator",
-            options=list(indicator_label_to_short.keys())
+            options=list(indicator_label_to_short.keys()),
+            key="forecast_indicator_selector"
         )
 
         selected_indicator = indicator_label_to_short[selected_indicator_label]
@@ -991,7 +1052,7 @@ historical trends continue.
                 ignore_index=True
             )
 
-            fig = px.line(
+            fig_forecast = px.line(
                 plot_df,
                 x="year",
                 y="value",
@@ -1017,10 +1078,14 @@ historical trends continue.
                 }
             )
 
-            fig.update_traces(marker=dict(size=7), line=dict(width=3))
-            fig.update_layout(template="plotly_white", legend_title_text="Series")
+            fig_forecast.update_traces(marker=dict(size=7), line=dict(width=3))
+            fig_forecast.update_layout(template="plotly_white", legend_title_text="Series")
 
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(
+                fig_forecast,
+                use_container_width=True,
+                key=f"forecast_chart_{forecast_country}_{selected_indicator}"
+            )
 
             st.markdown(
                 f"""
