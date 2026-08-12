@@ -2,112 +2,102 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.express as px
+from pathlib import Path
 
-# =========================
-# Page setup
-# =========================
+
+# ============================================================
+# Page configuration
+# ============================================================
 
 st.set_page_config(
-    page_title="SDG Education & Financial Inclusion Explorer",
+    page_title="SDG 4 & 8 Explorer",
     page_icon="📊",
     layout="wide"
 )
 
-# =========================
-# Load data
-# =========================
 
-@st.cache_data
-def load_data():
-    df = pd.read_csv("project3_analysis_data.csv")
-    return df
+# ============================================================
+# Global settings
+# ============================================================
 
-@st.cache_data
-def load_forecast_data():
-    try:
-        forecast_df = pd.read_csv("fas_forecast_data.csv")
-        forecast_df["year"] = pd.to_numeric(forecast_df["year"], errors="coerce")
-        forecast_df["value"] = pd.to_numeric(forecast_df["value"], errors="coerce")
-        forecast_df = forecast_df.dropna(subset=["year", "value"]).copy()
-        forecast_df["year"] = forecast_df["year"].astype(int)
-        return forecast_df
-    except FileNotFoundError:
-        return pd.DataFrame()
+DATA_PATH = Path("project3_analysis_data.csv")
+FORECAST_PATH = Path("fas_forecast_data.csv")
 
-df = load_data()
-forecast_df = load_forecast_data()
-
-# =========================
-# Helper lists
-# =========================
-
-country_col = "REF_AREA_LABEL"
-
-country_order = [
+COUNTRY_ORDER = [
     "Korea, Rep.",
     "Hong Kong SAR, China",
     "Thailand",
     "Indonesia"
 ]
 
-country_color_map = {
-    "Korea, Rep.": "#F6C85F",
-    "Hong Kong SAR, China": "#F4A261",
-    "Thailand": "#E76F51",
-    "Indonesia": "#db6826"
+COUNTRY_LABEL_MAP = {
+    "Korea, Rep.": "Korea",
+    "Hong Kong SAR, China": "Hong Kong",
+    "Thailand": "Thailand",
+    "Indonesia": "Indonesia"
 }
 
-score_cols = [
-    col for col in [
-        "education_equity_score",
-        "financial_usage_score",
-        "financial_access_score",
-        "overall_readiness_score"
-    ]
-    if col in df.columns
+COUNTRY_LABEL_ORDER = [
+    "Korea",
+    "Hong Kong",
+    "Thailand",
+    "Indonesia"
 ]
 
-education_cols = [
-    col for col in [
-        "math_gpi",
-        "math_wpi",
-        "math_test_language_pi",
-        "math_location_pi",
-        "math_native_pi"
-    ]
-    if col in df.columns
+COUNTRY_COLOR_MAP = {
+    "Korea, Rep.": "#FF6347",
+    "Hong Kong SAR, China": "#FA8072",
+    "Thailand": "#FF8C00",
+    "Indonesia": "#FFE34D"
+}
+
+PILLAR_ORDER = [
+    "Mathematics learning equity",
+    "Formal financial participation",
+    "Financial access infrastructure"
 ]
 
-financial_usage_cols = [
-    col for col in [
-        "account_ownership",
-        "financial_institution_account",
-        "digital_payment",
-        "used_debit_card",
-        "owns_credit_card",
-        "formal_saving",
-        "formal_borrowing"
-    ]
-    if col in df.columns
+PILLAR_COLOR_MAP = {
+    "Mathematics learning equity": "#66CDAA",
+    "Formal financial participation": "#20B2AA",
+    "Financial access infrastructure": "#B0E0E6"
+}
+
+EDUCATION_RAW_COLS = [
+    "math_gpi",
+    "math_wpi",
+    "math_test_language_pi",
+    "math_location_pi",
+    "math_native_pi"
 ]
 
-financial_access_cols = [
-    col for col in [
-        "atm_per_100k_adults",
-        "bank_branches_per_100k_adults",
-        "deposit_accounts_per_1000_adults",
-        "credit_cards_per_1000_adults",
-        "debit_cards_per_1000_adults"
-    ]
-    if col in df.columns
+FINDEX_RAW_COLS = [
+    "account_ownership",
+    "financial_institution_account",
+    "digital_payment",
+    "used_debit_card",
+    "owns_credit_card",
+    "formal_saving",
+    "formal_borrowing"
 ]
 
-indicator_label_map = {
+FAS_RAW_COLS = [
+    "atm_per_100k_adults",
+    "bank_branches_per_100k_adults",
+    "deposit_accounts_per_1000_adults",
+    "credit_cards_per_1000_adults",
+    "debit_cards_per_1000_adults"
+]
+
+INDICATOR_LABEL_MAP = {
+    # Education
     "math_gpi": "Math gender parity index",
     "math_wpi": "Math wealth parity index",
-    "math_test_language_pi": "Math test language parity index",
+    "math_test_language_pi": "Math test-language parity index",
     "math_location_pi": "Math location parity index",
-    "math_native_pi": "Math native parity index",
+    "math_native_pi": "Math native/background parity index",
+
+    # Findex
     "account_ownership": "Account ownership",
     "financial_institution_account": "Financial institution account",
     "digital_payment": "Made or received a digital payment",
@@ -115,467 +105,1002 @@ indicator_label_map = {
     "owns_credit_card": "Owns a credit card",
     "formal_saving": "Saved at a financial institution",
     "formal_borrowing": "Borrowed from a financial institution",
+
+    # FAS
     "atm_per_100k_adults": "ATMs per 100,000 adults",
-    "bank_branches_per_100k_adults": "Bank branches per 100,000 adults",
+    "bank_branches_per_100k_adults": "Commercial bank branches per 100,000 adults",
     "deposit_accounts_per_1000_adults": "Deposit accounts per 1,000 adults",
     "credit_cards_per_1000_adults": "Credit cards per 1,000 adults",
     "debit_cards_per_1000_adults": "Debit cards per 1,000 adults",
-    "education_equity_score": "Education Equity Score",
-    "financial_usage_score": "Financial Usage Score",
-    "financial_access_score": "Financial Access Score",
-    "overall_readiness_score": "Overall Readiness Score"
+
+    # Scores
+    "education_equity_score": "Mathematics learning equity score",
+    "formal_financial_participation_score": "Formal financial participation score",
+    "financial_access_infrastructure_score": "Financial access infrastructure score",
+    "financial_inclusion_ecosystem_score": "Financial inclusion ecosystem score",
+    "overall_readiness_score": "Overall readiness score"
 }
 
-def pretty_name(col):
-    return indicator_label_map.get(col, col.replace("_", " ").title())
 
-# =========================
-# Title
-# =========================
+# ============================================================
+# Helper functions
+# ============================================================
 
-st.title("SDG Education & Financial Inclusion Explorer")
-
-st.markdown(
+def minmax_score(series: pd.Series) -> pd.Series:
     """
-    This app explores mathematics-related education equity and financial inclusion readiness
-    across selected Asian economies. It combines SDG 4 education-related indicators with
-    SDG 8.10 financial inclusion indicators.
+    Convert a numeric indicator to a 0-100 relative score across selected economies.
+    This is used for FAS infrastructure indicators because they have different units.
     """
-)
+    series = pd.to_numeric(series, errors="coerce")
+    valid = series.dropna()
 
-# =========================
-# Sidebar
-# =========================
+    if valid.empty or valid.max() == valid.min():
+        return pd.Series(np.nan, index=series.index)
 
-st.sidebar.header("Controls")
+    return (series - valid.min()) / (valid.max() - valid.min()) * 100
 
-countries = df[country_col].dropna().unique().tolist()
-selected_country = st.sidebar.selectbox("Select a country/economy", countries)
 
-selected_row = df[df[country_col] == selected_country].iloc[0]
+def percent_score(series: pd.Series) -> pd.Series:
+    """
+    Keep percentage-based indicators on their original 0-100 scale.
+    If a column is stored as a proportion between 0 and 1, convert it to 0-100.
+    This is used for Findex indicators because they already represent usage percentages.
+    """
+    series = pd.to_numeric(series, errors="coerce")
+    valid = series.dropna()
 
-# =========================
-# Overview metrics
-# =========================
+    if not valid.empty and valid.max() <= 1.5:
+        series = series * 100
 
-st.header("1. Country Profile")
+    return series.clip(lower=0, upper=100)
 
-metric_cols = st.columns(4)
 
-if "overall_readiness_score" in df.columns:
-    metric_cols[0].metric(
-        "Overall Readiness Score",
-        f"{selected_row['overall_readiness_score']:.1f}"
+def pretty_name(col_name: str) -> str:
+    return INDICATOR_LABEL_MAP.get(
+        col_name,
+        col_name.replace("_", " ").title()
     )
 
-if "education_equity_score" in df.columns:
-    metric_cols[1].metric(
-        "Education Equity Score",
-        f"{selected_row['education_equity_score']:.1f}"
-    )
 
-if "financial_usage_score" in df.columns:
-    metric_cols[2].metric(
-        "Financial Usage Score",
-        f"{selected_row['financial_usage_score']:.1f}"
-    )
+def add_country_labels(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy()
+    df["economy_label"] = df["REF_AREA_LABEL"].map(COUNTRY_LABEL_MAP).fillna(df["REF_AREA_LABEL"])
+    return df
 
-if "financial_access_score" in df.columns:
-    metric_cols[3].metric(
-        "Financial Access Score",
-        f"{selected_row['financial_access_score']:.1f}"
-    )
 
-st.subheader("Data years used")
+def ensure_scores(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Recompute score columns using the updated project logic:
+    - Education parity score: closer to 1 = more equitable
+    - Findex participation score: average of percentage-based usage indicators
+    - FAS infrastructure score: min-max normalized because units differ
+    """
+    df = df.copy()
 
-year_cols = [col for col in ["edu_year", "findex_year", "fas_year"] if col in df.columns]
+    education_equity_cols = [col for col in EDUCATION_RAW_COLS if col in df.columns]
+    financial_participation_cols = [col for col in FINDEX_RAW_COLS if col in df.columns]
+    financial_access_cols = [col for col in FAS_RAW_COLS if col in df.columns]
 
-if year_cols:
-    st.dataframe(
-        df[[country_col] + year_cols],
-        use_container_width=True
-    )
+    education_score_cols = []
+    for col in education_equity_cols:
+        score_col = col + "_score"
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+        df[score_col] = (100 - (df[col] - 1).abs() * 100).clip(lower=0, upper=100)
+        education_score_cols.append(score_col)
 
-# =========================
-# Composite score ranking
-# =========================
+    participation_score_cols = []
+    for col in financial_participation_cols:
+        score_col = col + "_score"
+        df[score_col] = percent_score(df[col])
+        participation_score_cols.append(score_col)
 
-st.header("2. Composite Score Ranking")
+    access_score_cols = []
+    for col in financial_access_cols:
+        score_col = col + "_score"
+        df[score_col] = minmax_score(df[col])
+        access_score_cols.append(score_col)
 
-if "overall_readiness_score" in df.columns:
-    ranking_df = df.sort_values("overall_readiness_score", ascending=False).copy()
-    
-    fig = px.bar(
-        ranking_df,
-        x=country_col,
-        y="overall_readiness_score",
-        color=country_col,
-        text="overall_readiness_score",
-        title="Overall Readiness Score by Country/Economy",
-        labels={
-            country_col: "Country/Economy",
-            "overall_readiness_score": "Overall Readiness Score"
-        },
-        color_discrete_map=country_color_map,
-        category_orders={country_col: country_order}
-    )
-    
-    fig.update_layout(showlegend=False)
-    fig.update_traces(texttemplate="%{text:.1f}", textposition="outside")
-    fig.update_layout(yaxis_range=[0, 105])
-    st.plotly_chart(fig, use_container_width=True)
+    if education_score_cols:
+        df["education_equity_score"] = df[education_score_cols].mean(axis=1)
 
-    show_cols = [country_col] + score_cols
-    if "rank" in df.columns:
-        show_cols = ["rank"] + show_cols
+    if participation_score_cols:
+        df["formal_financial_participation_score"] = df[participation_score_cols].mean(axis=1)
 
-    st.dataframe(
-        ranking_df[show_cols],
-        use_container_width=True
-    )
-else:
-    st.info("Overall readiness score is not available in the dataset.")
+    if access_score_cols:
+        df["financial_access_infrastructure_score"] = df[access_score_cols].mean(axis=1)
 
-# =========================
-# Education equity
-# =========================
+    required_pillars = [
+        "education_equity_score",
+        "formal_financial_participation_score",
+        "financial_access_infrastructure_score"
+    ]
 
-st.header("3. Education Equity Indicators")
+    if all(col in df.columns for col in required_pillars):
+        df["financial_inclusion_ecosystem_score"] = df[required_pillars].mean(axis=1)
 
-if education_cols:
-    selected_edu_indicator = st.selectbox(
-        "Select an education indicator",
-        education_cols,
-        format_func=pretty_name
-    )
+    if "formal_financial_participation_score" in df.columns:
+        df["financial_usage_score"] = df["formal_financial_participation_score"]
 
-    fig = px.bar(
-        df,
-        x=country_col,
-        y=selected_edu_indicator,
-        color=country_col,
-        text=selected_edu_indicator,
-        title=pretty_name(selected_edu_indicator),
-        labels={
-            country_col: "Country/Economy",
-            selected_edu_indicator: pretty_name(selected_edu_indicator)
-        },
-        color_discrete_map=country_color_map,
-        category_orders={country_col: country_order}
-    )
-    
-    fig.update_layout(showlegend=False)
-    fig.update_traces(texttemplate="%{text:.2f}", textposition="outside")
-    st.plotly_chart(fig, use_container_width=True)
+    if "financial_access_infrastructure_score" in df.columns:
+        df["financial_access_score"] = df["financial_access_infrastructure_score"]
 
-    st.caption(
-        "For parity indicators, values closer to 1 generally suggest more equal outcomes across groups."
-    )
-else:
-    st.info("No education equity indicators were found in the dataset.")
+    if "financial_inclusion_ecosystem_score" in df.columns:
+        df["overall_readiness_score"] = df["financial_inclusion_ecosystem_score"]
 
-# =========================
-# Financial inclusion
-# =========================
+    if "financial_inclusion_ecosystem_score" in df.columns:
+        df = df.sort_values(
+            "financial_inclusion_ecosystem_score",
+            ascending=False
+        ).reset_index(drop=True)
+        df["rank"] = df.index + 1
 
-st.header("4. Financial Inclusion Indicators")
+    df = add_country_labels(df)
+    return df
 
-financial_cols = financial_usage_cols + financial_access_cols
 
-if financial_cols:
-    selected_fin_indicator = st.selectbox(
-        "Select a financial inclusion indicator",
-        financial_cols,
-        format_func=pretty_name
-    )
-
-    fig = px.bar(
-        df,
-        x=country_col,
-        y=selected_fin_indicator,
-        color=country_col,
-        text=selected_fin_indicator,
-        title=pretty_name(selected_fin_indicator),
-        labels={
-            country_col: "Country/Economy",
-            selected_fin_indicator: pretty_name(selected_fin_indicator)
-        },
-        color_discrete_map=country_color_map,
-        category_orders={country_col: country_order}
-    )
-    
-    fig.update_layout(showlegend=False)
-    fig.update_traces(texttemplate="%{text:.1f}", textposition="outside")
-    st.plotly_chart(fig, use_container_width=True)
-
-    st.dataframe(
-        df[[country_col, selected_fin_indicator]],
-        use_container_width=True
-    )
-else:
-    st.info("No financial inclusion indicators were found in the dataset.")
-
-# =========================
-# Cross-SDG comparison
-# =========================
-
-st.header("5. Cross-SDG Comparison")
-
-if education_cols and financial_cols:
-    col1, col2 = st.columns(2)
-
-    with col1:
-        x_indicator = st.selectbox(
-            "X-axis: education indicator",
-            education_cols,
-            format_func=pretty_name
+@st.cache_data
+def load_analysis_data() -> pd.DataFrame:
+    if not DATA_PATH.exists():
+        st.error(
+            "Could not find project3_analysis_data.csv. "
+            "Please upload it to the same folder as app.py."
         )
+        st.stop()
 
-    with col2:
-        y_indicator = st.selectbox(
-            "Y-axis: financial inclusion indicator",
-            financial_cols,
-            format_func=pretty_name
-        )
+    df = pd.read_csv(DATA_PATH)
+    df = ensure_scores(df)
+    return df
 
+
+@st.cache_data
+def load_forecast_data() -> pd.DataFrame:
+    if not FORECAST_PATH.exists():
+        return pd.DataFrame()
+
+    forecast_df = pd.read_csv(FORECAST_PATH)
+    forecast_df["year"] = pd.to_numeric(forecast_df["year"], errors="coerce")
+    forecast_df["value"] = pd.to_numeric(forecast_df["value"], errors="coerce")
+    forecast_df = forecast_df.dropna(subset=["year", "value"]).copy()
+    forecast_df["year"] = forecast_df["year"].astype(int)
+    forecast_df = add_country_labels(forecast_df)
+    return forecast_df
+
+
+def format_score(value):
+    if pd.isna(value):
+        return "N/A"
+    return f"{value:.1f}"
+
+
+def plot_ecosystem_score(df: pd.DataFrame):
+    plot_df = df.sort_values("financial_inclusion_ecosystem_score", ascending=False)
+
+    fig = px.bar(
+        plot_df,
+        x="economy_label",
+        y="financial_inclusion_ecosystem_score",
+        color="REF_AREA_LABEL",
+        text="financial_inclusion_ecosystem_score",
+        title="Financial Inclusion Ecosystem Score by Economy",
+        labels={
+            "economy_label": "Economy",
+            "financial_inclusion_ecosystem_score": "Financial Inclusion Ecosystem Score",
+            "REF_AREA_LABEL": "Economy"
+        },
+        color_discrete_map=COUNTRY_COLOR_MAP,
+        category_orders={
+            "economy_label": COUNTRY_LABEL_ORDER,
+            "REF_AREA_LABEL": COUNTRY_ORDER
+        }
+    )
+
+    fig.update_traces(texttemplate="%{text:.1f}", textposition="outside")
+    fig.update_layout(
+        template="plotly_white",
+        showlegend=False,
+        yaxis_range=[0, 105]
+    )
+
+    return fig
+
+
+def plot_three_dimension_profile(df: pd.DataFrame):
+    pillar_score_map = {
+        "education_equity_score": "Mathematics learning equity",
+        "formal_financial_participation_score": "Formal financial participation",
+        "financial_access_infrastructure_score": "Financial access infrastructure"
+    }
+
+    pillar_plot_df = df[
+        ["REF_AREA_LABEL", "economy_label"] + list(pillar_score_map.keys())
+    ].melt(
+        id_vars=["REF_AREA_LABEL", "economy_label"],
+        value_vars=list(pillar_score_map.keys()),
+        var_name="score_type",
+        value_name="score"
+    )
+
+    pillar_plot_df["pillar"] = pillar_plot_df["score_type"].map(pillar_score_map)
+    pillar_plot_df["pillar"] = pd.Categorical(
+        pillar_plot_df["pillar"],
+        categories=PILLAR_ORDER,
+        ordered=True
+    )
+
+    fig = px.bar(
+        pillar_plot_df,
+        x="economy_label",
+        y="score",
+        color="pillar",
+        barmode="group",
+        text="score",
+        title="Three-Dimension Profile: Education, Participation, and Infrastructure",
+        labels={
+            "economy_label": "Economy",
+            "score": "Score",
+            "pillar": "Dimension"
+        },
+        color_discrete_map=PILLAR_COLOR_MAP,
+        category_orders={
+            "economy_label": COUNTRY_LABEL_ORDER,
+            "pillar": PILLAR_ORDER
+        }
+    )
+
+    fig.update_traces(texttemplate="%{text:.1f}", textposition="outside")
+    fig.update_layout(
+        template="plotly_white",
+        yaxis_range=[0, 105],
+        legend_title_text="Dimension"
+    )
+
+    return fig
+
+
+def plot_three_dimension_scatter(df: pd.DataFrame):
     fig = px.scatter(
         df,
-        x=x_indicator,
-        y=y_indicator,
-        color=country_col,
-        text=country_col,
-        title=f"{pretty_name(x_indicator)} vs. {pretty_name(y_indicator)}",
+        x="education_equity_score",
+        y="formal_financial_participation_score",
+        color="REF_AREA_LABEL",
+        text="economy_label",
+        size="financial_access_infrastructure_score",
+        size_max=55,
+        title="Three-Dimension View: Education Equity, Financial Participation, and Access Infrastructure",
         labels={
-            x_indicator: pretty_name(x_indicator),
-            y_indicator: pretty_name(y_indicator),
-            country_col: "Country/Economy"
+            "education_equity_score": "Mathematics Learning Equity Score",
+            "formal_financial_participation_score": "Formal Financial Participation Score",
+            "financial_access_infrastructure_score": "Financial Access Infrastructure Score",
+            "REF_AREA_LABEL": "Economy",
+            "economy_label": "Economy"
         },
-        color_discrete_map=country_color_map,
-        category_orders={country_col: country_order}
+        color_discrete_map=COUNTRY_COLOR_MAP,
+        category_orders={"REF_AREA_LABEL": COUNTRY_ORDER},
+        hover_name="REF_AREA_LABEL",
+        hover_data={
+            "economy_label": False,
+            "education_equity_score": ":.1f",
+            "formal_financial_participation_score": ":.1f",
+            "financial_access_infrastructure_score": ":.1f"
+        }
     )
+
     fig.update_traces(textposition="top center")
+
+    fig.update_layout(
+        template="plotly_white",
+        title={
+            "text": (
+                "Three-Dimension View: Education Equity, Financial Participation, "
+                "and Access Infrastructure<br>"
+                "<sup>Bubble size represents the financial access infrastructure score.</sup>"
+            ),
+            "x": 0.02,
+            "xanchor": "left"
+        },
+        legend_title_text="Economy"
+    )
+
+    return fig
+
+
+def plot_indicator_bar(df: pd.DataFrame, indicator_col: str, title: str, y_label: str):
+    plot_df = df.copy()
+
+    fig = px.bar(
+        plot_df,
+        x="economy_label",
+        y=indicator_col,
+        color="REF_AREA_LABEL",
+        text=indicator_col,
+        title=title,
+        labels={
+            "economy_label": "Economy",
+            indicator_col: y_label,
+            "REF_AREA_LABEL": "Economy"
+        },
+        color_discrete_map=COUNTRY_COLOR_MAP,
+        category_orders={
+            "economy_label": COUNTRY_LABEL_ORDER,
+            "REF_AREA_LABEL": COUNTRY_ORDER
+        },
+        hover_name="REF_AREA_LABEL"
+    )
+
+    fig.update_traces(texttemplate="%{text:.1f}", textposition="outside")
+    fig.update_layout(
+        template="plotly_white",
+        showlegend=False
+    )
+
+    return fig
+
+
+# ============================================================
+# Load data
+# ============================================================
+
+df = load_analysis_data()
+forecast_df = load_forecast_data()
+
+
+# ============================================================
+# Sidebar
+# ============================================================
+
+st.sidebar.title("Explorer Controls")
+
+selected_country = st.sidebar.selectbox(
+    "Select an economy",
+    options=COUNTRY_ORDER,
+    format_func=lambda x: COUNTRY_LABEL_MAP.get(x, x)
+)
+
+selected_country_row = df[df["REF_AREA_LABEL"] == selected_country].iloc[0]
+
+
+# ============================================================
+# Header
+# ============================================================
+
+st.title("Project 3: SDG 4 & 8 - Mathematics Learning Equity and Financial Inclusion Ecosystem Explorer")
+
+st.caption(
+    "Connecting SDG 4 mathematics-related learning equity with SDG Target 8.10 "
+    "formal financial participation and financial access infrastructure."
+)
+
+st.markdown(
+    """
+This project began with a simple observation: many everyday financial activities involve numbers.
+Using a bank account, making a digital payment, comparing cards, saving money, or borrowing formally
+all require some level of comfort with numerical information.
+
+The analysis looks at financial inclusion as an ecosystem with three connected dimensions:
+
+1. **Mathematics-related learning equity** — the education-side foundation.  
+2. **Formal financial participation** — the people-side usage of formal financial tools.  
+3. **Financial access infrastructure** — the environment-side access and service context.  
+
+The analysis is exploratory. It compares four selected Asian economies: **Korea, Hong Kong, Thailand, and Indonesia**.
+"""
+)
+
+
+# ============================================================
+# Tabs
+# ============================================================
+
+tab_overview, tab_country, tab_charts, tab_indicators, tab_forecast, tab_notes = st.tabs(
+    [
+        "Overview",
+        "Country Profile",
+        "Ecosystem Charts",
+        "Indicator Details",
+        "Predictive Outlook",
+        "Data Notes"
+    ]
+)
+
+
+# ============================================================
+# Tab 1: Overview
+# ============================================================
+
+with tab_overview:
+    st.subheader("Executive Summary")
+
+    st.markdown(
+        """
+This app explores how mathematics-related learning equity, formal financial participation,
+and financial access infrastructure appear together across four selected Asian economies.
+
+Hong Kong and Korea show the strongest overall ecosystem scores, both around 79.
+However, their profiles are not identical: Hong Kong stands out most strongly in mathematics-learning equity,
+while Korea appears slightly more balanced across the three dimensions.
+
+Thailand and Indonesia show more mixed patterns. Thailand has moderate education equity and financial participation,
+but much lower infrastructure. Indonesia has relatively stronger mathematics-learning equity than Thailand,
+but much lower formal financial participation and financial access infrastructure.
+This suggests that education-side foundations may support financial inclusion, but they do not automatically translate
+into actual financial usage.
+"""
+    )
+
+    st.plotly_chart(plot_ecosystem_score(df), use_container_width=True)
+
+    st.markdown(
+        """
+**Storytelling insight:**  
+Hong Kong and Korea have the higher overall ecosystem scores, suggesting stronger combined performance across
+the selected education, financial participation, and infrastructure indicators. Thailand and Indonesia score lower,
+mainly because their financial participation and infrastructure scores are much lower than those of Hong Kong and Korea.
+"""
+    )
+
+    st.subheader("Recommendations")
+
+    st.markdown(
+        """
+**1. Connect education and financial inclusion more directly.**  
+Because many everyday financial activities involve numerical information, financial inclusion strategies should not only
+focus on access to services. They can also include practical financial literacy and numeracy support, especially around
+accounts, digital payments, savings, cards, and borrowing.
+
+**2. Look beyond infrastructure alone.**  
+Financial infrastructure can create opportunities, but it does not automatically lead to usage. Programs should also consider
+trust, affordability, digital adoption, product relevance, and whether people feel confident using formal financial services.
+
+**3. Improve SDG data coverage and year alignment.**  
+Future projects would benefit from more consistent data on adult numeracy, financial literacy, digital financial behavior,
+and subgroup-level financial inclusion. This would make it possible to test the education-finance connection more directly.
+"""
+    )
+
+
+# ============================================================
+# Tab 2: Country Profile
+# ============================================================
+
+with tab_country:
+    st.subheader(f"Country Profile: {COUNTRY_LABEL_MAP.get(selected_country, selected_country)}")
+
+    col1, col2, col3, col4 = st.columns(4)
+
+    col1.metric(
+        "Ecosystem score",
+        format_score(selected_country_row.get("financial_inclusion_ecosystem_score"))
+    )
+
+    col2.metric(
+        "Mathematics learning equity",
+        format_score(selected_country_row.get("education_equity_score"))
+    )
+
+    col3.metric(
+        "Formal financial participation",
+        format_score(selected_country_row.get("formal_financial_participation_score"))
+    )
+
+    col4.metric(
+        "Access infrastructure",
+        format_score(selected_country_row.get("financial_access_infrastructure_score"))
+    )
+
+    st.markdown("### Three-pillar profile")
+
+    selected_profile = pd.DataFrame(
+        {
+            "Dimension": [
+                "Mathematics learning equity",
+                "Formal financial participation",
+                "Financial access infrastructure"
+            ],
+            "Score": [
+                selected_country_row.get("education_equity_score"),
+                selected_country_row.get("formal_financial_participation_score"),
+                selected_country_row.get("financial_access_infrastructure_score")
+            ]
+        }
+    )
+
+    fig = px.bar(
+        selected_profile,
+        x="Dimension",
+        y="Score",
+        color="Dimension",
+        text="Score",
+        title=f"Three-Pillar Profile: {COUNTRY_LABEL_MAP.get(selected_country, selected_country)}",
+        labels={
+            "Dimension": "Dimension",
+            "Score": "Score"
+        },
+        color_discrete_map=PILLAR_COLOR_MAP,
+        category_orders={"Dimension": PILLAR_ORDER}
+    )
+
+    fig.update_traces(texttemplate="%{text:.1f}", textposition="outside")
+    fig.update_layout(
+        template="plotly_white",
+        showlegend=False,
+        yaxis_range=[0, 105]
+    )
+
     st.plotly_chart(fig, use_container_width=True)
 
-    corr_df = df[[x_indicator, y_indicator]].dropna()
+    st.markdown("### Interpretation")
 
-    if len(corr_df) >= 3:
-        corr = corr_df[x_indicator].corr(corr_df[y_indicator])
-        st.write(f"Exploratory correlation: **{corr:.2f}**")
-    else:
-        st.write("Not enough non-missing observations to calculate a correlation.")
+    if selected_country == "Korea, Rep.":
+        st.markdown(
+            """
+Korea shows the most balanced profile across the three dimensions. Its mathematics-learning equity,
+formal financial participation, and financial access infrastructure scores are all relatively high,
+suggesting a more mature and balanced financial inclusion ecosystem among the four selected economies.
+"""
+        )
+    elif selected_country == "Hong Kong SAR, China":
+        st.markdown(
+            """
+Hong Kong has the strongest mathematics-learning equity score and high formal financial participation.
+Its infrastructure score is also strong, though slightly lower than its education equity score.
+This suggests that Hong Kong performs well overall, with education equity as its strongest pillar.
+"""
+        )
+    elif selected_country == "Thailand":
+        st.markdown(
+            """
+Thailand shows moderate mathematics-learning equity and formal financial participation, but a much lower
+financial access infrastructure score. This suggests that participation may be supported by factors beyond
+the infrastructure indicators captured here, such as digital adoption, service models, or policy design.
+"""
+        )
+    elif selected_country == "Indonesia":
+        st.markdown(
+            """
+Indonesia has relatively stronger mathematics-learning equity than Thailand, but much lower formal financial
+participation and financial access infrastructure. This suggests a possible translation gap between education-side
+foundations and actual participation in formal financial services.
+"""
+        )
 
-    st.caption(
-        "Because this comparison includes only a small number of countries/economies, "
-        "the scatter plot should be interpreted as exploratory rather than causal or statistically conclusive."
+    st.markdown("### Raw data for selected economy")
+
+    display_cols = [
+        col for col in [
+            "REF_AREA_LABEL",
+            "edu_year",
+            "findex_year",
+            "fas_year",
+            "education_equity_score",
+            "formal_financial_participation_score",
+            "financial_access_infrastructure_score",
+            "financial_inclusion_ecosystem_score"
+        ] + EDUCATION_RAW_COLS + FINDEX_RAW_COLS + FAS_RAW_COLS
+        if col in df.columns
+    ]
+
+    st.dataframe(
+        selected_country_row[display_cols].to_frame(name="Value"),
+        use_container_width=True
     )
-else:
-    st.info("Cross-SDG comparison requires both education and financial indicators.")
 
-# =========================
-# Predictive outlook
-# =========================
 
-st.header("6. Predictive Outlook")
+# ============================================================
+# Tab 3: Ecosystem Charts
+# ============================================================
 
-st.markdown(
-    """
-    This section uses historical IMF Financial Access Survey data to create a simple
-    country-specific projection for selected financial access indicators.
-    """
-)
+with tab_charts:
+    st.subheader("8-1. Financial Inclusion Ecosystem Score")
 
-if forecast_df.empty:
-    st.info(
-        "Forecast data is not available yet. Please upload fas_forecast_data.csv to enable this section."
+    st.markdown(
+        """
+This score gives a high-level view of the three-part framework. It combines mathematics-related
+learning equity, formal financial participation, and financial access infrastructure. The purpose is not
+to rank economies as definitively better or worse, but to summarize how strongly each economy appears
+across the selected indicators.
+"""
     )
-else:
-    forecast_countries = sorted(forecast_df["REF_AREA_LABEL"].dropna().unique().tolist())
-    forecast_indicators = sorted(forecast_df["short_indicator"].dropna().unique().tolist())
 
-    col1, col2 = st.columns(2)
+    st.plotly_chart(plot_ecosystem_score(df), use_container_width=True)
 
-    with col1:
-        forecast_country = st.selectbox(
-            "Select a country/economy for projection",
-            forecast_countries,
-            key="forecast_country"
+    st.markdown(
+        """
+**Insight:**  
+Hong Kong and Korea have the higher overall ecosystem scores, both around 79, suggesting that they combine
+relatively strong mathematics-learning equity, formal financial participation, and financial access infrastructure.
+This chart indicates a clear gap between the two higher-scoring economies and the two economies where financial
+inclusion is still developing across the selected indicators.
+"""
+    )
+
+    st.divider()
+
+    st.subheader("8-2. Three-Dimension Profile")
+
+    st.markdown(
+        """
+This chart separates the ecosystem score into its three components. It helps show whether an economy’s
+position is driven more by education equity, people-side financial participation, or financial access infrastructure.
+"""
+    )
+
+    st.plotly_chart(plot_three_dimension_profile(df), use_container_width=True)
+
+    st.markdown(
+        """
+**Insight:**  
+This three-dimension profile works as a diagnostic view of each economy’s financial inclusion ecosystem.
+Korea shows the most balanced profile, with all three dimensions staying relatively high, while Hong Kong stands
+out most strongly in mathematics-learning equity but has slightly lower scores in participation and infrastructure.
+
+Thailand and Indonesia show different types of gaps. Thailand has moderate education equity and financial participation,
+but its infrastructure score is much lower, suggesting that formal financial usage may be supported by factors beyond
+the infrastructure indicators captured here. Indonesia, on the other hand, has relatively stronger education equity
+but much lower participation and infrastructure scores, indicating that the main challenge may be turning education-side
+foundations into broader formal financial participation.
+"""
+    )
+
+    st.divider()
+
+    st.subheader("8-3. Three-Dimension Relationship View")
+
+    st.markdown(
+        """
+This is the central cross-SDG comparison. It connects the education-side foundation with the people-side
+financial inclusion outcome. Bubble size represents financial access infrastructure, adding the environment-side
+context to the same view.
+
+The chart should be read as exploratory. With only four economies and near-year data, it can suggest patterns
+but cannot prove causal conclusions.
+"""
+    )
+
+    st.plotly_chart(plot_three_dimension_scatter(df), use_container_width=True)
+
+    st.markdown(
+        """
+**Insight:**  
+This chart shows that financial inclusion does not follow a simple one-way pattern. Korea and Hong Kong form a
+high-performing group, both showing strong mathematics-learning equity, high formal financial participation, and
+larger financial access infrastructure bubbles. Korea appears slightly more balanced across participation and
+infrastructure, while Hong Kong stands out more strongly on education equity.
+
+Thailand and Indonesia show a more interesting contrast. Indonesia has higher mathematics-learning equity than
+Thailand and a similar financial access infrastructure score, but its formal financial participation is much lower.
+This suggests that education foundations and access infrastructure may support financial inclusion, but they do not
+automatically translate into actual usage; other factors such as trust, income, digital adoption, policy design,
+or financial literacy may also shape whether people participate in formal financial services.
+"""
+    )
+
+
+# ============================================================
+# Tab 4: Indicator Details
+# ============================================================
+
+with tab_indicators:
+    st.subheader("Education, Financial Participation, and Infrastructure Indicators")
+
+    st.markdown(
+        """
+This section lets users zoom into the indicators behind the three scores.
+Education indicators are parity indexes, so values closer to 1 indicate more equal outcomes across groups.
+Findex indicators are percentage-based usage measures. FAS indicators describe financial access infrastructure
+and use different units.
+"""
+    )
+
+    indicator_group = st.radio(
+        "Select an indicator group",
+        [
+            "Education equity indicators",
+            "Formal financial participation indicators",
+            "Financial access infrastructure indicators"
+        ],
+        horizontal=True
+    )
+
+    if indicator_group == "Education equity indicators":
+        available_cols = [col for col in EDUCATION_RAW_COLS if col in df.columns]
+        selected_indicator = st.selectbox(
+            "Select an education indicator",
+            available_cols,
+            format_func=pretty_name
         )
 
-    with col2:
-        forecast_indicator = st.selectbox(
-            "Select a financial access indicator for projection",
-            forecast_indicators,
-            format_func=pretty_name,
-            key="forecast_indicator"
+        st.info(
+            "Education indicators are parity indexes. A value of 1 means the compared groups have equal "
+            "mathematics-related outcomes. Values farther from 1 indicate larger inequality in either direction."
         )
 
-    selected_hist = forecast_df[
-        (forecast_df["REF_AREA_LABEL"] == forecast_country) &
-        (forecast_df["short_indicator"] == forecast_indicator)
-    ].sort_values("year").copy()
-
-    selected_hist = selected_hist.dropna(subset=["year", "value"]).copy()
-
-    if selected_hist.shape[0] < 4:
-        st.warning(
-            "Not enough historical observations for the selected country and indicator."
+        fig = plot_indicator_bar(
+            df,
+            selected_indicator,
+            title=pretty_name(selected_indicator),
+            y_label="Parity index"
         )
-    else:
-        # Use a simple country-specific linear trend.
-        # To avoid unrealistic jumps, the future projection is anchored at the latest actual value.
-        x = selected_hist["year"].astype(float).values
-        y = selected_hist["value"].astype(float).values
 
-        slope, intercept = np.polyfit(x, y, 1)
-
-        selected_hist["fitted_trend"] = intercept + slope * selected_hist["year"]
-
-        # R-squared for historical fit
-        ss_res = ((selected_hist["value"] - selected_hist["fitted_trend"]) ** 2).sum()
-        ss_tot = ((selected_hist["value"] - selected_hist["value"].mean()) ** 2).sum()
-        r_squared = np.nan if ss_tot == 0 else 1 - ss_res / ss_tot
-
-        last_year = int(selected_hist["year"].max())
-        last_value = float(selected_hist["value"].iloc[-1])
-
-        future_years = list(range(last_year + 1, last_year + 6))
-
-        future_df = pd.DataFrame({
-            "REF_AREA_LABEL": forecast_country,
-            "short_indicator": forecast_indicator,
-            "year": future_years
-        })
-
-        # Anchored projection:
-        # future value = latest actual value + estimated annual trend * years ahead
-        future_df["value"] = [
-            last_value + slope * (year - last_year)
-            for year in future_years
-        ]
-
-        future_df["value"] = future_df["value"].clip(lower=0)
-
-        # Prepare plot data
-        # Historical = actual historical values
-        # Projected = starts from the latest actual value and extends 5 years forward
-        
-        actual_plot = selected_hist[["year", "value"]].copy()
-        actual_plot["series"] = "Historical"
-        
-        last_actual = selected_hist[["year", "value"]].tail(1).copy()
-        last_actual["series"] = "Projected"
-        
-        projected_plot = future_df[["year", "value"]].copy()
-        projected_plot["series"] = "Projected"
-        
-        plot_df = pd.concat(
-            [actual_plot, last_actual, projected_plot],
-            ignore_index=True
+        fig.add_hline(
+            y=1,
+            line_dash="dash",
+            line_color="gray",
+            annotation_text="Parity = 1",
+            annotation_position="top left"
         )
-        
-        fig = px.line(
-            plot_df,
-            x="year",
-            y="value",
-            color="series",
-            line_dash="series",
-            markers=True,
-            title=f"{pretty_name(forecast_indicator)}: Historical Trend and 5-Year Projection",
-            labels={
-                "year": "Year",
-                "value": pretty_name(forecast_indicator),
-                "series": "Series"
-            },
-            color_discrete_map={
-                "Historical": "#0B5CAD",
-                "Projected": "#7CC7FF"
-            },
-            line_dash_map={
-                "Historical": "solid",
-                "Projected": "dash"
-            },
-            category_orders={
-                "series": ["Historical", "Projected"]
-            }
-        )
-        
-        fig.update_traces(
-            marker=dict(size=7),
-            line=dict(width=3)
-        )
-        
-        fig.update_layout(
-            legend_title_text="Series"
-        )
-        
+
         st.plotly_chart(fig, use_container_width=True)
 
-        metric1, metric2, metric3, metric4 = st.columns(4)
-
-        projected_value = float(future_df["value"].iloc[-1])
-        projected_change = projected_value - last_value
-
-        metric1.metric(
-            "Latest historical value",
-            f"{last_value:.1f}"
+    elif indicator_group == "Formal financial participation indicators":
+        available_cols = [col for col in FINDEX_RAW_COLS if col in df.columns]
+        selected_indicator = st.selectbox(
+            "Select a Findex participation indicator",
+            available_cols,
+            format_func=pretty_name
         )
 
-        metric2.metric(
-            "Projected value in 5 years",
-            f"{projected_value:.1f}"
+        st.info(
+            "Findex indicators are interpreted as people-side financial participation measures. "
+            "They show whether adults are actually using formal financial tools."
         )
 
-        metric3.metric(
-            "Projected change",
-            f"{projected_change:+.1f}"
+        fig = plot_indicator_bar(
+            df,
+            selected_indicator,
+            title=pretty_name(selected_indicator),
+            y_label="Percentage of adults"
         )
 
-        metric4.metric(
-            "Annual trend",
-            f"{slope:+.2f}"
+        fig.update_layout(yaxis_range=[0, 105])
+        st.plotly_chart(fig, use_container_width=True)
+
+    else:
+        available_cols = [col for col in FAS_RAW_COLS if col in df.columns]
+        selected_indicator = st.selectbox(
+            "Select a FAS infrastructure indicator",
+            available_cols,
+            format_func=pretty_name
         )
 
-        st.write(f"Historical model R-squared: **{r_squared:.2f}**")
-
-        forecast_table = pd.concat(
-            [
-                selected_hist[["REF_AREA_LABEL", "short_indicator", "year", "value"]].assign(type="Historical"),
-                future_df[["REF_AREA_LABEL", "short_indicator", "year", "value"]].assign(type="Projected")
-            ],
-            ignore_index=True
+        st.info(
+            "FAS indicators describe the environment-side financial access context. "
+            "They are not direct measures of people’s behavior, but they show whether formal financial services "
+            "and access points are available."
         )
 
-        st.dataframe(
-            forecast_table,
-            use_container_width=True
+        fig = plot_indicator_bar(
+            df,
+            selected_indicator,
+            title=pretty_name(selected_indicator),
+            y_label=pretty_name(selected_indicator)
         )
 
-        st.caption(
-            "This projection uses a simple country-specific linear regression trend and anchors the forecast at the latest observed value. "
-            "It is intended as an exploratory scenario, not a precise forecast. Results should be interpreted carefully because the number of historical observations is limited and financial access indicators may be affected by policy, technology, or measurement changes."
+        st.plotly_chart(fig, use_container_width=True)
+
+    st.markdown("### Indicator data")
+
+    detail_cols = [
+        "REF_AREA_LABEL",
+        "economy_label"
+    ]
+
+    if indicator_group == "Education equity indicators":
+        detail_cols += [col for col in EDUCATION_RAW_COLS if col in df.columns]
+    elif indicator_group == "Formal financial participation indicators":
+        detail_cols += [col for col in FINDEX_RAW_COLS if col in df.columns]
+    else:
+        detail_cols += [col for col in FAS_RAW_COLS if col in df.columns]
+
+    st.dataframe(df[detail_cols], use_container_width=True)
+
+
+# ============================================================
+# Tab 5: Predictive Outlook
+# ============================================================
+
+with tab_forecast:
+    st.subheader("Predictive Outlook: Financial Access Infrastructure")
+
+    st.markdown(
+        """
+The predictive outlook uses historical IMF Financial Access Survey data because infrastructure indicators
+have more consistent annual observations than Findex survey indicators.
+
+This is not a forecast of people’s financial behavior. It is an exploratory outlook for the financial access
+environment: how selected access points or financial infrastructure measures may continue to change if recent
+historical trends continue.
+"""
+    )
+
+    if forecast_df.empty:
+        st.warning(
+            "fas_forecast_data.csv was not found. Please add it to the same folder as app.py "
+            "to enable the predictive outlook section."
+        )
+    else:
+        forecast_country = st.selectbox(
+            "Select economy for prediction",
+            options=[country for country in COUNTRY_ORDER if country in forecast_df["REF_AREA_LABEL"].unique()],
+            format_func=lambda x: COUNTRY_LABEL_MAP.get(x, x)
         )
 
-# =========================
-# Data table
-# =========================
+        country_forecast_df = forecast_df[forecast_df["REF_AREA_LABEL"] == forecast_country].copy()
 
-st.header("7. Final Analysis Data")
+        indicator_options = (
+            country_forecast_df[["short_indicator", "indicator_label"]]
+            .drop_duplicates()
+            .sort_values("indicator_label")
+        )
 
-with st.expander("Show final dataset"):
-    st.dataframe(df, use_container_width=True)
+        indicator_label_to_short = dict(
+            zip(indicator_options["indicator_label"], indicator_options["short_indicator"])
+        )
 
-# =========================
-# Data notes
-# =========================
+        selected_indicator_label = st.selectbox(
+            "Select infrastructure indicator",
+            options=list(indicator_label_to_short.keys())
+        )
 
-st.header("8. Data Notes")
+        selected_indicator = indicator_label_to_short[selected_indicator_label]
 
-st.markdown(
-    """
-    - Education indicators are based on mathematics-related parity measures from the education dataset.
-    - Financial usage indicators are based on World Bank Findex data.
-    - Financial access infrastructure indicators are based on IMF Financial Access Survey data.
-    - The analysis uses nearest available years across datasets when exact-year alignment is not available.
-    - Results should be interpreted as exploratory comparisons rather than causal evidence.
-    """
-)
+        selected_hist = country_forecast_df[
+            country_forecast_df["short_indicator"] == selected_indicator
+        ].copy()
+
+        selected_hist = selected_hist.sort_values("year").reset_index(drop=True)
+
+        if selected_hist.shape[0] < 2:
+            st.warning("Not enough historical data points to create a projection.")
+        else:
+            x = selected_hist["year"].astype(float).values
+            y = selected_hist["value"].astype(float).values
+
+            slope, intercept = np.polyfit(x, y, 1)
+
+            selected_hist["series"] = "Historical"
+
+            last_year = int(selected_hist["year"].max())
+            last_value = float(selected_hist["value"].iloc[-1])
+
+            future_years = list(range(last_year + 1, last_year + 6))
+            future_values = [
+                max(0, last_value + slope * (year - last_year))
+                for year in future_years
+            ]
+
+            future_df = pd.DataFrame(
+                {
+                    "REF_AREA_LABEL": forecast_country,
+                    "short_indicator": selected_indicator,
+                    "indicator_label": selected_indicator_label,
+                    "year": future_years,
+                    "value": future_values,
+                    "series": "Projected"
+                }
+            )
+
+            last_actual = selected_hist.tail(1).copy()
+            last_actual["series"] = "Projected"
+
+            plot_df = pd.concat(
+                [
+                    selected_hist[["year", "value", "series"]],
+                    last_actual[["year", "value", "series"]],
+                    future_df[["year", "value", "series"]]
+                ],
+                ignore_index=True
+            )
+
+            fig = px.line(
+                plot_df,
+                x="year",
+                y="value",
+                color="series",
+                line_dash="series",
+                markers=True,
+                title=f"{selected_indicator_label}: Historical Trend and 5-Year Projection",
+                labels={
+                    "year": "Year",
+                    "value": selected_indicator_label,
+                    "series": "Series"
+                },
+                color_discrete_map={
+                    "Historical": "#0B5CAD",
+                    "Projected": "#7CC7FF"
+                },
+                line_dash_map={
+                    "Historical": "solid",
+                    "Projected": "dash"
+                },
+                category_orders={
+                    "series": ["Historical", "Projected"]
+                }
+            )
+
+            fig.update_traces(marker=dict(size=7), line=dict(width=3))
+            fig.update_layout(template="plotly_white", legend_title_text="Series")
+
+            st.plotly_chart(fig, use_container_width=True)
+
+            st.markdown(
+                f"""
+**Interpretation:**  
+This projection uses a simple country-specific linear trend based on historical FAS data for
+**{COUNTRY_LABEL_MAP.get(forecast_country, forecast_country)}**. It should be interpreted as a directional scenario,
+not a precise forecast. The goal is to show how the financial access environment may continue to change if recent
+historical patterns continue.
+"""
+            )
+
+            projection_summary = pd.concat(
+                [
+                    selected_hist[["year", "value"]].assign(type="Historical"),
+                    future_df[["year", "value"]].assign(type="Projected")
+                ],
+                ignore_index=True
+            )
+
+            st.dataframe(projection_summary, use_container_width=True)
+
+
+# ============================================================
+# Tab 6: Data Notes
+# ============================================================
+
+with tab_notes:
+    st.subheader("Data Sources and Methodology Notes")
+
+    st.markdown(
+        """
+### Data sources
+
+- **World Bank Education Statistics**: mathematics-related learning equity indicators  
+- **World Bank Global Findex**: formal financial participation indicators  
+- **IMF Financial Access Survey**: financial access infrastructure indicators  
+
+### Year alignment
+
+Education and FAS indicators use **2018** values where available.  
+Findex indicators use **2017**, the nearest available survey year before 2018.  
+Because the datasets do not all report every year, the final comparison should be interpreted as a near-year exploratory comparison, not as a perfectly same-year causal analysis.
+
+### Score interpretation
+
+- **Mathematics learning equity score**: based on parity indicators. Values closer to 1 are treated as more equitable.  
+- **Formal financial participation score**: average of selected Findex usage percentages.  
+- **Financial access infrastructure score**: relative min-max score across selected economies because FAS indicators use different units.  
+- **Financial inclusion ecosystem score**: exploratory composite score combining the three pillars.  
+
+### Limitations
+
+This project uses mathematics-related learning equity as an indirect education-side measure because direct adult numeracy data was limited.
+The analysis includes only four economies and combines near-year data from multiple sources.
+The composite scores depend on the selected indicators, scoring method, and available data coverage.
+Therefore, the findings should be interpreted as descriptive patterns rather than statistical or causal conclusions.
+"""
+    )
+
+    with st.expander("Optional diagnostic check: score correlations"):
+        st.markdown(
+            """
+This optional diagnostic check looks at whether the three pillar scores move in a similar direction across
+the four selected economies. The correlations are positive, but because the sample includes only four economies,
+they should not be interpreted as statistical evidence.
+"""
+        )
+
+        score_cols = [
+            "education_equity_score",
+            "formal_financial_participation_score",
+            "financial_access_infrastructure_score"
+        ]
+
+        available_score_cols = [col for col in score_cols if col in df.columns]
+
+        if len(available_score_cols) >= 2:
+            st.dataframe(df[available_score_cols].corr(), use_container_width=True)
+        else:
+            st.info("Not enough score columns available to compute correlations.")
+
+    with st.expander("Final analysis data"):
+        st.dataframe(df, use_container_width=True)
