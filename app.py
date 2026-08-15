@@ -475,24 +475,15 @@ forecast_df = load_forecast_data()
 
 st.title("Project 3: SDG 4 & 8 - Mathematics Learning Equity and Financial Inclusion Ecosystem Explorer")
 
-st.caption(
-    "Connecting SDG 4 mathematics-related learning equity with SDG Target 8.10 "
-    "formal financial participation and financial access infrastructure."
-)
-
 st.markdown(
     """
-This project began with a simple observation: many everyday financial activities involve numbers.
-Using a bank account, making a digital payment, comparing cards, saving money, or borrowing formally
-all require some level of comfort with numerical information.
-
-The analysis looks at financial inclusion as an ecosystem with three connected dimensions:
+This analysis looks at financial inclusion as an ecosystem with three connected dimensions:
 
 1. **Mathematics-related learning equity** — the education-side foundation.  
 2. **Formal financial participation** — the people-side usage of formal financial tools.  
 3. **Financial access infrastructure** — the environment-side access and service context.  
 
-The analysis is exploratory. It compares four selected Asian economies: **Korea, Hong Kong, Thailand, and Indonesia**.
+It compares four selected Asian economies: **Korea, Hong Kong, Thailand, and Indonesia**.
 """
 )
 
