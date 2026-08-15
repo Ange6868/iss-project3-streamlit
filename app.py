@@ -519,7 +519,7 @@ with tab_country:
 
     selected_country_row = df[df["REF_AREA_LABEL"] == selected_country].iloc[0]
 
-    st.markdown("### Overall ecosystem score")
+    st.markdown("### Ecosystem score")
 
     metric_col, note_col = st.columns([1, 3])
 
