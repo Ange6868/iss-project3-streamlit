@@ -525,7 +525,7 @@ with tab_country:
             <div style="font-size: 1rem; color: #6b7280; margin-bottom: 0.25rem;">
                 Ecosystem score
             </div>
-            <div style="font-size: 2.4rem; font-weight: 600; line-height: 1;">
+            <div style="font-size: 2.2rem; font-weight: 600; line-height: 1;">
                 {format_score(selected_country_row.get("financial_inclusion_ecosystem_score"))}
             </div>
         </div>
