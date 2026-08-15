@@ -502,7 +502,6 @@ tab_country, tab_charts, tab_indicators, tab_forecast, tab_notes = st.tabs(
     ]
 )
 
-
 # ============================================================
 # Tab 1: Country Profile
 # ============================================================
@@ -519,24 +518,20 @@ with tab_country:
 
     selected_country_row = df[df["REF_AREA_LABEL"] == selected_country].iloc[0]
 
-    st.markdown("### Ecosystem score")
-
-    metric_col, note_col = st.columns([1, 3])
-
-    with metric_col:
-        st.metric(
-            "Ecosystem score",
-            format_score(selected_country_row.get("financial_inclusion_ecosystem_score"))
-        )
-
-    with note_col:
-        st.markdown(
-            """
-The ecosystem score is an exploratory composite score that combines the three pillars:
-mathematics-learning equity, formal financial participation, and financial access infrastructure.
-The chart below shows the three component scores separately.
-"""
-        )
+    # Centered ecosystem score only
+    st.markdown(
+        f"""
+        <div style="text-align: center; margin-top: 1.5rem; margin-bottom: 2rem;">
+            <div style="font-size: 1rem; color: #6b7280; margin-bottom: 0.25rem;">
+                Ecosystem score
+            </div>
+            <div style="font-size: 3.2rem; font-weight: 600; line-height: 1;">
+                {format_score(selected_country_row.get("financial_inclusion_ecosystem_score"))}
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
     st.markdown("### Three-pillar profile")
 
@@ -569,12 +564,17 @@ The chart below shows the three component scores separately.
         category_orders={"Dimension": PILLAR_ORDER}
     )
 
-    fig_country_profile.update_traces(texttemplate="%{text:.1f}", textposition="outside")
+    fig_country_profile.update_traces(
+        texttemplate="%{text:.1f}",
+        textposition="outside"
+    )
+
     fig_country_profile.update_layout(
         template="plotly_white",
         showlegend=False,
         yaxis_range=[0, 105],
-        title=None
+        title_text="",   # prevents the "undefined" title from appearing
+        margin=dict(t=20, r=40, b=60, l=60)
     )
 
     st.plotly_chart(
