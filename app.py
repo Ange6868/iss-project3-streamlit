@@ -518,15 +518,19 @@ with tab_country:
 
     selected_country_row = df[df["REF_AREA_LABEL"] == selected_country].iloc[0]
 
-    # Centered ecosystem score only
+    # Centered ecosystem score with a short explanation
     st.markdown(
         f"""
-        <div style="text-align: center; margin-top: 1.0rem; margin-bottom: 1.2rem;">
-            <div style="font-size: 1rem; color: #6b7280; margin-bottom: 0.25rem;">
+        <div style="text-align: center; margin-top: 0.8rem; margin-bottom: 1.6rem;">
+            <div style="font-size: 0.9rem; color: #6b7280; margin-bottom: 0.2rem;">
                 Ecosystem score
             </div>
-            <div style="font-size: 2.2rem; font-weight: 600; line-height: 1;">
+            <div style="font-size: 2.6rem; font-weight: 600; line-height: 1; margin-bottom: 0.7rem;">
                 {format_score(selected_country_row.get("financial_inclusion_ecosystem_score"))}
+            </div>
+            <div style="max-width: 680px; margin: 0 auto; font-size: 0.95rem; color: #6b7280; line-height: 1.55;">
+                This exploratory composite score combines mathematics-learning equity,
+                formal financial participation, and financial access infrastructure.
             </div>
         </div>
         """,
