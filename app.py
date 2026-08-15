@@ -521,7 +521,7 @@ with tab_country:
     # Centered ecosystem score only
     st.markdown(
         f"""
-        <div style="text-align: center; margin-top: 1.2rem; margin-bottom: 1.5rem;">
+        <div style="text-align: center; margin-top: 1.0rem; margin-bottom: 1.2rem;">
             <div style="font-size: 1rem; color: #6b7280; margin-bottom: 0.25rem;">
                 Ecosystem score
             </div>
