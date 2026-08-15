@@ -477,7 +477,7 @@ st.title("Project 3: SDG 4 & 8 - Mathematics Learning Equity and Financial Inclu
 
 st.markdown(
     """
-This analysis looks at financial inclusion as an ecosystem with three connected dimensions:
+The project looks at financial inclusion as an ecosystem with three connected dimensions:
 
 1. **Mathematics-related learning equity** — the education-side foundation.  
 2. **Formal financial participation** — the people-side usage of formal financial tools.  
