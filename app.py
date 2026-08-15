@@ -522,10 +522,10 @@ with tab_country:
     st.markdown(
         f"""
         <div style="text-align: center; margin-top: 0.8rem; margin-bottom: 1.6rem;">
-            <div style="font-size: 1.4rem; font-weight: 700; color: #555b66; margin-bottom: 0.2rem;">
+            <div style="font-size: 1.4rem; font-weight: 700; color: #606673; margin-bottom: 0.2rem;">
                 Ecosystem score
             </div>
-            <div style="font-size: 2.2rem; font-weight: 600; line-height: 1; margin-bottom: 0.7rem;">
+            <div style="font-size: 2.2rem; font-weight: 500; line-height: 1; margin-bottom: 0.7rem;">
                 {format_score(selected_country_row.get("financial_inclusion_ecosystem_score"))}
             </div>
             <div style="max-width: 680px; margin: 0 auto; font-size: 0.95rem; color: #6b7280; line-height: 1.55;">
