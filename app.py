@@ -982,12 +982,12 @@ with tab_notes:
 
 - **World Bank Education Statistics**: mathematics-related learning equity indicators  
 - **World Bank Global Findex**: formal financial participation indicators  
-- **IMF Financial Access Survey**: financial access infrastructure indicators  
+- **International Monetary Fund Financial Access Survey**: financial access infrastructure indicators  
 
 ### Year alignment
 
-Education and FAS indicators use **2018** values where available.  
-Findex indicators use **2017**, the nearest available survey year before 2018.  
+Education and FAS indicators use **2018** values where available.
+Findex indicators use **2017**, the nearest available survey year before 2018.
 Because the datasets do not all report every year, the final comparison should be interpreted as a near-year exploratory comparison, not as a perfectly same-year causal analysis.
 
 ### Score interpretation
