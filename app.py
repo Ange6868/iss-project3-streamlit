@@ -522,7 +522,7 @@ with tab_country:
     st.markdown(
         f"""
         <div style="text-align: center; margin-top: 0.8rem; margin-bottom: 1.6rem;">
-            <div style="font-size: 0.9rem; color: #6b7280; margin-bottom: 0.2rem;">
+            <div style="font-size: 1.6rem; color: #4a4f59; margin-bottom: 0.2rem;">
                 Ecosystem score
             </div>
             <div style="font-size: 2.2rem; font-weight: 600; line-height: 1; margin-bottom: 0.7rem;">
