@@ -818,14 +818,12 @@ with tab_forecast:
 
     st.markdown(
         """
-The predictive outlook uses historical IMF Financial Access Survey data because infrastructure indicators
-have more consistent annual observations than Findex survey indicators.
-
-This is not a forecast of people’s financial behavior. It is an exploratory outlook for the financial access
-environment: how selected access points or financial infrastructure measures may continue to change if recent
-historical trends continue.
+The predictive outlook uses historical IMF Financial Access Survey data.
 """
     )
+    st.caption(
+    "Available infrastructure indicators may differ by economy because historical FAS coverage is not complete for every indicator."
+)
 
     if forecast_df.empty:
         st.warning(
