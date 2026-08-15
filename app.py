@@ -521,11 +521,11 @@ with tab_country:
     # Centered ecosystem score only
     st.markdown(
         f"""
-        <div style="text-align: center; margin-top: 1.5rem; margin-bottom: 2rem;">
+        <div style="text-align: center; margin-top: 1.2rem; margin-bottom: 1.5rem;">
             <div style="font-size: 1rem; color: #6b7280; margin-bottom: 0.25rem;">
                 Ecosystem score
             </div>
-            <div style="font-size: 3.2rem; font-weight: 600; line-height: 1;">
+            <div style="font-size: 2.4rem; font-weight: 600; line-height: 1;">
                 {format_score(selected_country_row.get("financial_inclusion_ecosystem_score"))}
             </div>
         </div>
