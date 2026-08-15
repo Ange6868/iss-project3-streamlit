@@ -396,7 +396,18 @@ def plot_three_dimension_scatter(df: pd.DataFrame):
         }
     )
 
-    fig.update_traces(textposition="top center")
+    # Avoid text being clipped by large bubbles.
+    fig.update_traces(cliponaxis=False)
+
+    for trace in fig.data:
+        if trace.name == "Korea, Rep.":
+            trace.textposition = "bottom center"
+        elif trace.name == "Hong Kong SAR, China":
+            trace.textposition = "top center"
+        elif trace.name == "Thailand":
+            trace.textposition = "top left"
+        elif trace.name == "Indonesia":
+            trace.textposition = "top center"
 
     fig.update_layout(
         template="plotly_white",
@@ -409,7 +420,10 @@ def plot_three_dimension_scatter(df: pd.DataFrame):
             "x": 0.02,
             "xanchor": "left"
         },
-        legend_title_text="Economy"
+        legend_title_text="Economy",
+        margin=dict(t=110, r=40, b=60, l=60),
+        yaxis=dict(range=[20, 95]),
+        xaxis=dict(range=[63, 96])
     )
 
     return fig
@@ -456,22 +470,6 @@ forecast_df = load_forecast_data()
 
 
 # ============================================================
-# Sidebar
-# ============================================================
-
-st.sidebar.title("Explorer Controls")
-
-selected_country = st.sidebar.selectbox(
-    "Select an economy",
-    options=COUNTRY_ORDER,
-    format_func=lambda x: COUNTRY_LABEL_MAP.get(x, x),
-    key="sidebar_selected_country"
-)
-
-selected_country_row = df[df["REF_AREA_LABEL"] == selected_country].iloc[0]
-
-
-# ============================================================
 # Header
 # ============================================================
 
@@ -503,9 +501,8 @@ The analysis is exploratory. It compares four selected Asian economies: **Korea,
 # Tabs
 # ============================================================
 
-tab_overview, tab_country, tab_charts, tab_indicators, tab_forecast, tab_notes = st.tabs(
+tab_country, tab_charts, tab_indicators, tab_forecast, tab_notes = st.tabs(
     [
-        "Overview",
         "Country Profile",
         "Ecosystem Charts",
         "Indicator Details",
@@ -516,92 +513,39 @@ tab_overview, tab_country, tab_charts, tab_indicators, tab_forecast, tab_notes =
 
 
 # ============================================================
-# Tab 1: Overview
-# ============================================================
-
-with tab_overview:
-    st.subheader("Executive Summary")
-
-    st.markdown(
-        """
-This app explores how mathematics-related learning equity, formal financial participation,
-and financial access infrastructure appear together across four selected Asian economies.
-
-Hong Kong and Korea show the strongest overall ecosystem scores, both around 79.
-However, their profiles are not identical: Hong Kong stands out most strongly in mathematics-learning equity,
-while Korea appears slightly more balanced across the three dimensions.
-
-Thailand and Indonesia show more mixed patterns. Thailand has moderate education equity and financial participation,
-but much lower infrastructure. Indonesia has relatively stronger mathematics-learning equity than Thailand,
-but much lower formal financial participation and financial access infrastructure.
-This suggests that education-side foundations may support financial inclusion, but they do not automatically translate
-into actual financial usage.
-"""
-    )
-
-    st.plotly_chart(
-        plot_ecosystem_score(df),
-        use_container_width=True,
-        key="overview_ecosystem_score_chart"
-    )
-
-    st.markdown(
-        """
-**Storytelling insight:**  
-Hong Kong and Korea have the higher overall ecosystem scores, suggesting stronger combined performance across
-the selected education, financial participation, and infrastructure indicators. Thailand and Indonesia score lower,
-mainly because their financial participation and infrastructure scores are much lower than those of Hong Kong and Korea.
-"""
-    )
-
-    st.subheader("Recommendations")
-
-    st.markdown(
-        """
-**1. Connect education and financial inclusion more directly.**  
-Because many everyday financial activities involve numerical information, financial inclusion strategies should not only
-focus on access to services. They can also include practical financial literacy and numeracy support, especially around
-accounts, digital payments, savings, cards, and borrowing.
-
-**2. Look beyond infrastructure alone.**  
-Financial infrastructure can create opportunities, but it does not automatically lead to usage. Programs should also consider
-trust, affordability, digital adoption, product relevance, and whether people feel confident using formal financial services.
-
-**3. Improve SDG data coverage and year alignment.**  
-Future projects would benefit from more consistent data on adult numeracy, financial literacy, digital financial behavior,
-and subgroup-level financial inclusion. This would make it possible to test the education-finance connection more directly.
-"""
-    )
-
-
-# ============================================================
-# Tab 2: Country Profile
+# Tab 1: Country Profile
 # ============================================================
 
 with tab_country:
-    st.subheader(f"Country Profile: {COUNTRY_LABEL_MAP.get(selected_country, selected_country)}")
+    st.subheader("Country Profile")
 
-    col1, col2, col3, col4 = st.columns(4)
-
-    col1.metric(
-        "Ecosystem score",
-        format_score(selected_country_row.get("financial_inclusion_ecosystem_score"))
+    selected_country = st.selectbox(
+        "Select an economy",
+        options=COUNTRY_ORDER,
+        format_func=lambda x: COUNTRY_LABEL_MAP.get(x, x),
+        key="country_profile_selector"
     )
 
-    col2.metric(
-        "Mathematics learning equity",
-        format_score(selected_country_row.get("education_equity_score"))
-    )
+    selected_country_row = df[df["REF_AREA_LABEL"] == selected_country].iloc[0]
 
-    col3.metric(
-        "Formal financial participation",
-        format_score(selected_country_row.get("formal_financial_participation_score"))
-    )
+    st.markdown("### Overall ecosystem score")
 
-    col4.metric(
-        "Access infrastructure",
-        format_score(selected_country_row.get("financial_access_infrastructure_score"))
-    )
+    metric_col, note_col = st.columns([1, 3])
+
+    with metric_col:
+        st.metric(
+            "Ecosystem score",
+            format_score(selected_country_row.get("financial_inclusion_ecosystem_score"))
+        )
+
+    with note_col:
+        st.markdown(
+            """
+The ecosystem score is an exploratory composite score that combines the three pillars:
+mathematics-learning equity, formal financial participation, and financial access infrastructure.
+The chart below shows the three component scores separately.
+"""
+        )
 
     st.markdown("### Three-pillar profile")
 
@@ -626,7 +570,6 @@ with tab_country:
         y="Score",
         color="Dimension",
         text="Score",
-        title=f"Three-Pillar Profile: {COUNTRY_LABEL_MAP.get(selected_country, selected_country)}",
         labels={
             "Dimension": "Dimension",
             "Score": "Score"
@@ -639,7 +582,8 @@ with tab_country:
     fig_country_profile.update_layout(
         template="plotly_white",
         showlegend=False,
-        yaxis_range=[0, 105]
+        yaxis_range=[0, 105],
+        title=None
     )
 
     st.plotly_chart(
@@ -647,41 +591,6 @@ with tab_country:
         use_container_width=True,
         key=f"country_profile_pillar_chart_{selected_country}"
     )
-
-    st.markdown("### Interpretation")
-
-    if selected_country == "Korea, Rep.":
-        st.markdown(
-            """
-Korea shows the most balanced profile across the three dimensions. Its mathematics-learning equity,
-formal financial participation, and financial access infrastructure scores are all relatively high,
-suggesting a more mature and balanced financial inclusion ecosystem among the four selected economies.
-"""
-        )
-    elif selected_country == "Hong Kong SAR, China":
-        st.markdown(
-            """
-Hong Kong has the strongest mathematics-learning equity score and high formal financial participation.
-Its infrastructure score is also strong, though slightly lower than its education equity score.
-This suggests that Hong Kong performs well overall, with education equity as its strongest pillar.
-"""
-        )
-    elif selected_country == "Thailand":
-        st.markdown(
-            """
-Thailand shows moderate mathematics-learning equity and formal financial participation, but a much lower
-financial access infrastructure score. This suggests that participation may be supported by factors beyond
-the infrastructure indicators captured here, such as digital adoption, service models, or policy design.
-"""
-        )
-    elif selected_country == "Indonesia":
-        st.markdown(
-            """
-Indonesia has relatively stronger mathematics-learning equity than Thailand, but much lower formal financial
-participation and financial access infrastructure. This suggests a possible translation gap between education-side
-foundations and actual participation in formal financial services.
-"""
-        )
 
     st.markdown("### Raw data for selected economy")
 
@@ -706,7 +615,7 @@ foundations and actual participation in formal financial services.
 
 
 # ============================================================
-# Tab 3: Ecosystem Charts
+# Tab 2: Ecosystem Charts
 # ============================================================
 
 with tab_charts:
@@ -727,16 +636,6 @@ across the selected indicators.
         key="charts_ecosystem_score_chart"
     )
 
-    st.markdown(
-        """
-**Insight:**  
-Hong Kong and Korea have the higher overall ecosystem scores, both around 79, suggesting that they combine
-relatively strong mathematics-learning equity, formal financial participation, and financial access infrastructure.
-This chart indicates a clear gap between the two higher-scoring economies and the two economies where financial
-inclusion is still developing across the selected indicators.
-"""
-    )
-
     st.divider()
 
     st.subheader("8-2. Three-Dimension Profile")
@@ -752,21 +651,6 @@ position is driven more by education equity, people-side financial participation
         plot_three_dimension_profile(df),
         use_container_width=True,
         key="charts_three_dimension_profile"
-    )
-
-    st.markdown(
-        """
-**Insight:**  
-This three-dimension profile works as a diagnostic view of each economy’s financial inclusion ecosystem.
-Korea shows the most balanced profile, with all three dimensions staying relatively high, while Hong Kong stands
-out most strongly in mathematics-learning equity but has slightly lower scores in participation and infrastructure.
-
-Thailand and Indonesia show different types of gaps. Thailand has moderate education equity and financial participation,
-but its infrastructure score is much lower, suggesting that formal financial usage may be supported by factors beyond
-the infrastructure indicators captured here. Indonesia, on the other hand, has relatively stronger education equity
-but much lower participation and infrastructure scores, indicating that the main challenge may be turning education-side
-foundations into broader formal financial participation.
-"""
     )
 
     st.divider()
@@ -790,25 +674,9 @@ but cannot prove causal conclusions.
         key="charts_three_dimension_scatter"
     )
 
-    st.markdown(
-        """
-**Insight:**  
-This chart shows that financial inclusion does not follow a simple one-way pattern. Korea and Hong Kong form a
-high-performing group, both showing strong mathematics-learning equity, high formal financial participation, and
-larger financial access infrastructure bubbles. Korea appears slightly more balanced across participation and
-infrastructure, while Hong Kong stands out more strongly on education equity.
-
-Thailand and Indonesia show a more interesting contrast. Indonesia has higher mathematics-learning equity than
-Thailand and a similar financial access infrastructure score, but its formal financial participation is much lower.
-This suggests that education foundations and access infrastructure may support financial inclusion, but they do not
-automatically translate into actual usage; other factors such as trust, income, digital adoption, policy design,
-or financial literacy may also shape whether people participate in formal financial services.
-"""
-    )
-
 
 # ============================================================
-# Tab 4: Indicator Details
+# Tab 3: Indicator Details
 # ============================================================
 
 with tab_indicators:
@@ -947,7 +815,7 @@ and use different units.
 
 
 # ============================================================
-# Tab 5: Predictive Outlook
+# Tab 4: Predictive Outlook
 # ============================================================
 
 with tab_forecast:
@@ -1109,7 +977,7 @@ historical patterns continue.
 
 
 # ============================================================
-# Tab 6: Data Notes
+# Tab 5: Data Notes
 # ============================================================
 
 with tab_notes:
